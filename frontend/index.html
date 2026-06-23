@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ink Productivity</title>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@300;400;500;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/style.css">
+<link rel="manifest" href="/static/manifest.json">
+<link rel="icon" type="image/png" sizes="512x512" href="/static/Ink_Productivity.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/static/Ink_Productivity.png">
+<link rel="icon" type="image/png" sizes="32x32"  href="/static/Ink_Productivity.png">
+<link rel="icon" type="image/png" sizes="16x16"  href="/static/Ink_Productivity.png">
+<link rel="shortcut icon" href="/static/Ink_Productivity.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/static/Ink_Productivity.png">
+<meta name="theme-color" content="#7c6aff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="InkProd">
+<meta name="application-name" content="Ink Productivity">
+</head>
+<body>
+
+<!-- ヘッダー -->
+<header class="header">
+  <div class="header-left">
+    <span class="logo"><span class="logo-ink">Ink</span> Productivity</span>
+    <span class="badge">v1.0</span>
+  </div>
+  <div class="header-center">
+    <span class="clock" id="clock">--:--:--</span>
+  </div>
+  <div class="header-right">
+    <div class="active-indicator" id="activeIndicator" style="display:none">
+      <span class="pulse-dot"></span>
+      <span id="activeCount">0</span> 計測中
+    </div>
+  </div>
+</header>
+
+<!-- レイアウト -->
+<div class="layout">
+
+  <!-- サイドバー -->
+  <nav class="sidebar">
+    <button class="nav-btn active" data-tab="today">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      <span>今日</span>
+    </button>
+    <button class="nav-btn" data-tab="tasks">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+      <span>タスク</span>
+    </button>
+    <button class="nav-btn" data-tab="kanban">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="5" height="18" rx="1"/><rect x="10" y="3" width="5" height="12" rx="1"/><rect x="17" y="3" width="5" height="15" rx="1"/></svg>
+      <span>カンバン</span>
+    </button>
+    <button class="nav-btn" data-tab="matrix">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/></svg>
+      <span>マトリックス</span>
+    </button>
+    <button class="nav-btn" data-tab="analysis">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      <span>分析</span>
+    </button>
+    <button class="nav-btn" data-tab="settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      <span>設定</span>
+    </button>
+  </nav>
+
+  <!-- スマホ下部タブバー -->
+  <nav class="tabbar">
+    <div class="tabbar-inner">
+      <button class="tab-btn active" data-tab="today">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        今日
+        <span class="tab-badge" id="tabBadge"></span>
+      </button>
+      <button class="tab-btn" data-tab="tasks">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        タスク
+      </button>
+      <button class="tab-btn" data-tab="kanban">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="5" height="18" rx="1"/><rect x="10" y="3" width="5" height="12" rx="1"/><rect x="17" y="3" width="5" height="15" rx="1"/></svg>
+        KAN
+      </button>
+      <button class="tab-btn" data-tab="matrix">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/></svg>
+        MX
+      </button>
+      <button class="tab-btn" data-tab="analysis">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        分析
+      </button>
+      <button class="tab-btn" data-tab="settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        設定
+      </button>
+    </div>
+  </nav>
+
+  <!-- メインエリア -->
+  <main class="main">
+
+    <!-- ── 今日タブ ── -->
+    <section class="tab active" id="tab-today">
+      <div class="tab-header">
+        <h2>今日 <span class="tab-date" id="todayDate"></span></h2>
+      </div>
+
+      <!-- サマリーカード -->
+      <div class="summary-grid">
+        <div class="summary-card">
+          <div class="summary-label">総活動時間</div>
+          <div class="summary-value" id="summaryTotalTime">--</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">セッション数</div>
+          <div class="summary-value" id="summarySessionCnt">--</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">完了タスク</div>
+          <div class="summary-value" id="summaryDoneTasks">--</div>
+        </div>
+      </div>
+
+      <!-- クイックスタート -->
+      <div class="section-block">
+        <div class="section-title">クイックスタート</div>
+        <div class="quick-start-col">
+          <div class="input-wrap">
+            <input type="text" id="quickTaskInput" placeholder="タスク名を入力…" autocomplete="off">
+            <div class="suggestions-list" id="suggestionsList"></div>
+          </div>
+          <div class="quick-start-row2">
+            <input type="number" id="quickEstMin" placeholder="見積(分)" min="1" max="999">
+            <button class="btn btn-primary" id="quickStartBtn">▶ 開始</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- クイックタスク登録 -->
+      <div class="section-block">
+        <div class="section-title">クイックタスク登録</div>
+        <div class="quick-task-col">
+          <input type="text" id="qtaskName" placeholder="タスク名を入力…" autocomplete="off">
+          <div class="quick-task-row2">
+            <input type="date" id="qtaskDue" title="期日">
+            <select id="qtaskProject">
+              <option value="">プロジェクト未設定</option>
+            </select>
+            <select id="qtaskPriority" class="select-sm">
+              <option value="high">高</option>
+              <option value="medium" selected>中</option>
+              <option value="low">低</option>
+            </select>
+            <button class="btn btn-accent" id="qtaskSaveBtn">＋ 登録</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 計測中（今日タブ内） -->
+      <div class="section-block" id="activeSectionBlock" style="display:none">
+        <div class="section-title">
+          <span class="pulse-dot" style="background:var(--ink2)"></span>
+          計測中
+        </div>
+        <div id="activeSectionList" class="active-sessions"></div>
+      </div>
+
+      <!-- 本日の記録 -->
+      <div class="section-block">
+        <div class="section-title">本日の記録</div>
+        <div id="todaySessionList" class="session-list"></div>
+      </div>
+    </section>
+
+    <!-- ── タスクタブ ── -->
+    <section class="tab" id="tab-tasks">
+      <div class="tab-header">
+        <h2>タスク</h2>
+        <button class="btn btn-primary" id="newProjectBtn">＋ プロジェクト</button>
+      </div>
+
+      <!-- AI分解 -->
+      <div class="section-block ai-block">
+        <div class="section-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+          AI タスク分解
+        </div>
+        <div class="ai-row">
+          <input type="text" id="aiGoalInput" placeholder="大きな目標を入力（例：IRIAMイベント用立ち絵制作）" autocomplete="off">
+          <select id="aiModelSelect" class="select-sm">
+            <option value="">モデル選択</option>
+          </select>
+          <button class="btn btn-accent" id="aiDecomposeBtn">分解</button>
+        </div>
+        <div id="aiPreview" class="ai-preview" style="display:none"></div>
+        <div class="ai-actions" id="aiActions" style="display:none">
+          <button class="btn btn-primary" id="aiRegisterBtn">✓ 登録する</button>
+          <button class="btn btn-ghost"   id="aiCancelBtn">キャンセル</button>
+        </div>
+      </div>
+
+      <!-- スケジュールビュー -->
+      <div class="section-block schedule-block">
+        <div class="section-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          今後の予定
+        </div>
+        <div class="schedule-controls">
+          <div class="schedule-dates">
+            <div>
+              <label class="form-label">開始</label>
+              <input type="date" id="scheduleStart">
+            </div>
+            <span class="schedule-sep">〜</span>
+            <div>
+              <label class="form-label">終了</label>
+              <input type="date" id="scheduleEnd">
+            </div>
+          </div>
+          <div class="schedule-opts">
+            <label class="check-label">
+              <input type="checkbox" id="scheduleNoDate"> 日付のないタスクを表示
+            </label>
+            <label class="check-label">
+              <input type="checkbox" id="scheduleOverdue"> 期限切れタスクを表示
+            </label>
+          </div>
+          <button class="btn btn-accent" id="scheduleSearchBtn">絞り込む</button>
+        </div>
+        <div id="scheduleResult" class="schedule-result"></div>
+      </div>
+
+      <!-- プロジェクト一覧 -->
+      <div id="projectList" class="project-list"></div>
+    </section>
+
+    <!-- ── カンバンタブ ── -->
+    <section class="tab" id="tab-kanban">
+      <div class="tab-header">
+        <h2>カンバン</h2>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-accent" id="kanbanAddColBtn">＋ 列を追加</button>
+          <button class="btn btn-ghost"  id="kanbanRefreshBtn">↺ 更新</button>
+        </div>
+      </div>
+      <div class="kanban-board" id="kanbanBoard"></div>
+    </section>
+
+    <!-- ── マトリックスタブ ── -->
+    <section class="tab" id="tab-matrix">
+      <div class="tab-header">
+        <h2>アイゼンハワーマトリックス</h2>
+        <button class="btn btn-ghost" id="matrixRefreshBtn">↺ 更新</button>
+      </div>
+      <div class="matrix-legend">
+        <span class="matrix-legend-item q1">緊急対応</span>
+        <span class="matrix-legend-item q2">重点育成</span>
+        <span class="matrix-legend-item q3">即断処理</span>
+        <span class="matrix-legend-item q4">保留・断捨離</span>
+      </div>
+      <div class="matrix-q0-section">
+        <div class="matrix-cell q0" id="matrixCellQ0"
+             ondragover="event.preventDefault()" ondrop="onMatrixDrop(event,'q0')">
+          <div class="matrix-cell-header">
+            <span class="matrix-q-label">第0象限</span>
+            <span class="matrix-q-name">未設定</span>
+            <span class="matrix-q-desc">重要度・緊急度 未設定のタスク</span>
+          </div>
+          <div class="matrix-task-list" id="matrixQ0"></div>
+        </div>
+      </div>
+      <div class="matrix-grid" id="matrixGrid">
+        <div class="matrix-cell q1"
+             ondragover="event.preventDefault()" ondrop="onMatrixDrop(event,'q1')">
+          <div class="matrix-cell-header">
+            <span class="matrix-q-label">第1象限</span>
+            <span class="matrix-q-name">緊急対応</span>
+            <span class="matrix-q-desc">重要 高 × 緊急 高</span>
+          </div>
+          <div class="matrix-task-list" id="matrixQ1"></div>
+        </div>
+        <div class="matrix-cell q2"
+             ondragover="event.preventDefault()" ondrop="onMatrixDrop(event,'q2')">
+          <div class="matrix-cell-header">
+            <span class="matrix-q-label">第2象限</span>
+            <span class="matrix-q-name">重点育成</span>
+            <span class="matrix-q-desc">重要 高 × 緊急 低</span>
+          </div>
+          <div class="matrix-task-list" id="matrixQ2"></div>
+        </div>
+        <div class="matrix-cell q3"
+             ondragover="event.preventDefault()" ondrop="onMatrixDrop(event,'q3')">
+          <div class="matrix-cell-header">
+            <span class="matrix-q-label">第3象限</span>
+            <span class="matrix-q-name">即断処理</span>
+            <span class="matrix-q-desc">重要 低 × 緊急 高</span>
+          </div>
+          <div class="matrix-task-list" id="matrixQ3"></div>
+        </div>
+        <div class="matrix-cell q4"
+             ondragover="event.preventDefault()" ondrop="onMatrixDrop(event,'q4')">
+          <div class="matrix-cell-header">
+            <span class="matrix-q-label">第4象限</span>
+            <span class="matrix-q-name">保留・断捨離</span>
+            <span class="matrix-q-desc">重要 低 × 緊急 低</span>
+          </div>
+          <div class="matrix-task-list" id="matrixQ4"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── 分析タブ ── -->
+    <section class="tab" id="tab-analysis">
+      <div class="tab-header">
+        <h2>分析</h2>
+      </div>
+      <div class="section-block">
+        <div class="section-title">今週のサマリー</div>
+        <div id="weeklySummary" class="weekly-summary"></div>
+      </div>
+      <div class="section-block">
+        <div class="section-title lion-eye-title">🦁 LION EYE 分析</div>
+        <div class="lion-eye-controls">
+          <input type="date" id="lionStart">
+          <span>〜</span>
+          <input type="date" id="lionEnd">
+          <select id="lionMode" class="select-sm">
+            <option value="basic">基本モード</option>
+            <option value="ollama">ローカルLLM</option>
+          </select>
+          <select id="lionModel" class="select-sm" style="display:none">
+            <option value="">モデル選択</option>
+          </select>
+          <button class="btn btn-accent" id="lionBtn">分析</button>
+        </div>
+        <div id="lionResult" class="lion-result"></div>
+      </div>
+    </section>
+
+    <!-- ── 設定タブ ── -->
+    <section class="tab" id="tab-settings">
+      <div class="tab-header"><h2>設定</h2></div>
+      <div class="section-block">
+        <div class="section-title">Ollama モデル</div>
+        <div class="settings-row">
+          <label>デフォルトモデル</label>
+          <select id="defaultModelSelect" class="select-sm"><option value="">未選択</option></select>
+        </div>
+      </div>
+      <div class="section-block">
+        <div class="section-title">リマインダー</div>
+        <div class="settings-row">
+          <label>同一タスクの継続通知（分）</label>
+          <input type="number" id="reminderMin" value="60" min="10" max="480" class="input-sm">
+        </div>
+      </div>
+      <div class="section-block">
+        <button class="btn btn-primary" id="saveSettingsBtn">保存</button>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- モーダル群                                  -->
+<!-- ══════════════════════════════════════════ -->
+
+<!-- カンバン列追加モーダル -->
+<div class="modal-overlay" id="kanbanColModal" style="display:none">
+  <div class="modal modal-sm">
+    <div class="modal-title" id="kanbanColModalTitle">列を追加</div>
+    <input type="hidden" id="kanbanColId">
+    <div>
+      <label class="form-label">列名（＝ステータス名）</label>
+      <input type="text" id="kanbanColName" placeholder="例：レビュー中">
+    </div>
+    <div>
+      <label class="form-label">カラー</label>
+      <div class="color-picks" id="kanbanColorPicks"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" id="kanbanColSaveBtn">保存</button>
+      <button class="btn btn-ghost"   id="kanbanColCancelBtn">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<!-- 確認ダイアログ（汎用） -->
+<div class="modal-overlay" id="confirmModal" style="display:none">
+  <div class="modal modal-sm">
+    <div class="modal-title" id="confirmTitle">確認</div>
+    <p class="confirm-msg" id="confirmMsg"></p>
+    <div class="modal-actions">
+      <button class="btn btn-danger" id="confirmOkBtn">削除する</button>
+      <button class="btn btn-ghost"  id="confirmCancelBtn">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<!-- プロジェクト作成 -->
+<div class="modal-overlay" id="projectModal" style="display:none">
+  <div class="modal">
+    <div class="modal-title">プロジェクトを作成</div>
+    <input type="text" id="projectName" placeholder="プロジェクト名">
+    <textarea id="projectDesc" placeholder="説明（任意）" rows="2"></textarea>
+    <div class="color-row">
+      <label>カラー</label>
+      <div class="color-picks" id="colorPicks"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" id="projectSaveBtn">作成</button>
+      <button class="btn btn-ghost"   id="projectCancelBtn">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<!-- タスク作成 -->
+<div class="modal-overlay" id="taskModal" style="display:none">
+  <div class="modal">
+    <div class="modal-title">タスクを追加</div>
+    <input type="hidden" id="taskProjectId">
+    <input type="hidden" id="taskParentId">
+    <input type="text"   id="taskName"     placeholder="タスク名">
+    <div class="form-row">
+      <select id="taskCategory" class="select-sm">
+        <option value="">カテゴリ自動判定</option>
+        <option value="配信">配信</option>
+        <option value="制作">制作</option>
+        <option value="事務">事務</option>
+        <option value="リサーチ">リサーチ</option>
+        <option value="休憩">休憩</option>
+        <option value="その他">その他</option>
+      </select>
+      <select id="taskPriority" class="select-sm">
+        <option value="high">優先度：高</option>
+        <option value="medium" selected>優先度：中</option>
+        <option value="low">優先度：低</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <input type="date"   id="taskDueDate" placeholder="期日（任意）">
+      <input type="number" id="taskEstMin"  placeholder="見積(分)" min="1">
+    </div>
+    <div>
+      <label class="form-label">説明・プロンプトメモ（任意）</label>
+      <textarea id="taskDescription" placeholder="説明・AIプロンプトのメモなど" rows="2"></textarea>
+    </div>
+    <textarea id="taskNote" placeholder="メモ（任意）" rows="2"></textarea>
+    <div>
+      <label class="form-label">担当者・対象ライバー（任意）</label>
+      <input type="text" id="taskAssignee" placeholder="例：〇〇ライバー">
+    </div>
+    <div class="form-row">
+      <div>
+        <label class="form-label">重要度</label>
+        <select id="taskImportance">
+          <option value="low" selected>低（非重要）</option>
+          <option value="high">高（重要）</option>
+        </select>
+      </div>
+      <div>
+        <label class="form-label">緊急度</label>
+        <select id="taskUrgency">
+          <option value="low" selected>低（非緊急）</option>
+          <option value="high">高（緊急）</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" id="taskSaveBtn">追加</button>
+      <button class="btn btn-ghost"   id="taskCancelBtn">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<!-- セッション編集 -->
+<div class="modal-overlay" id="sessionEditModal" style="display:none">
+  <div class="modal">
+    <div class="modal-title">記録を編集</div>
+    <input type="hidden" id="editSessionId">
+    <div>
+      <label class="form-label">タスク名</label>
+      <input type="text" id="editSessionName" placeholder="タスク名">
+    </div>
+    <div>
+      <label class="form-label">カテゴリ（変更すると次回以降も固定されます）</label>
+      <select id="editSessionCategory">
+        <option value="配信">配信</option>
+        <option value="制作">制作</option>
+        <option value="事務">事務</option>
+        <option value="リサーチ">リサーチ</option>
+        <option value="休憩">休憩</option>
+        <option value="その他">その他</option>
+      </select>
+    </div>
+    <div>
+      <label class="form-label">プロジェクト（任意）</label>
+      <select id="editSessionProject">
+        <option value="">未設定</option>
+      </select>
+    </div>
+    <div>
+      <label class="form-label">メモ（任意）</label>
+      <textarea id="editSessionNote" rows="2" placeholder="メモ・AIプロンプトなど"></textarea>
+    </div>
+    <div class="form-row">
+      <div>
+        <label class="form-label">開始時刻</label>
+        <input type="datetime-local" id="editSessionStart">
+      </div>
+      <div>
+        <label class="form-label">終了時刻</label>
+        <input type="datetime-local" id="editSessionEnd">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" id="sessionEditSaveBtn">保存</button>
+      <button class="btn btn-ghost"   id="sessionEditCancelBtn">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<!-- 過去セッション追加 -->
+<div class="modal-overlay" id="pastModal" style="display:none">
+  <div class="modal">
+    <div class="modal-title">過去の記録を追加</div>
+    <input type="text"           id="pastName"  placeholder="タスク名">
+    <div class="form-row">
+      <div>
+        <label class="form-label">開始時刻</label>
+        <input type="datetime-local" id="pastStart">
+      </div>
+      <div>
+        <label class="form-label">終了時刻</label>
+        <input type="datetime-local" id="pastEnd">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" id="pastSaveBtn">追加</button>
+      <button class="btn btn-ghost"   id="pastCancelBtn">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<!-- タスク詳細パネル -->
+<div class="modal-overlay" id="taskDetailModal" style="display:none">
+  <div class="modal">
+    <div class="modal-title" id="detailTaskName">タスク詳細</div>
+    <div class="detail-grid">
+      <div>
+        <label class="form-label">説明・プロンプトメモ</label>
+        <textarea id="detailDescription" rows="3" placeholder="説明やAIプロンプトのメモ"></textarea>
+      </div>
+      <div>
+        <label class="form-label">担当者・対象ライバー</label>
+        <input type="text" id="detailAssignee" placeholder="例：〇〇ライバー">
+      </div>
+      <div>
+        <label class="form-label">メモ</label>
+        <textarea id="detailNote" rows="2" placeholder="メモ"></textarea>
+      </div>
+      <div class="form-row">
+        <div>
+          <label class="form-label">期日</label>
+          <input type="date" id="detailDueDate">
+        </div>
+        <div>
+          <label class="form-label">見積もり（分）</label>
+          <input type="number" id="detailEstMin" min="1">
+        </div>
+      </div>
+      <div>
+        <label class="form-label">カテゴリ</label>
+        <select id="detailCategory">
+          <option value="配信">配信</option>
+          <option value="制作">制作</option>
+          <option value="事務">事務</option>
+          <option value="リサーチ">リサーチ</option>
+          <option value="休憩">休憩</option>
+          <option value="その他">その他</option>
+        </select>
+      </div>
+      <div>
+        <label class="form-label">優先度</label>
+        <select id="detailPriority">
+          <option value="high">高</option>
+          <option value="medium">中</option>
+          <option value="low">低</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <div>
+          <label class="form-label">重要度（マトリックス用）</label>
+          <select id="detailImportance">
+            <option value="high">高（重要）</option>
+            <option value="low">低（非重要）</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label">緊急度（マトリックス用）</label>
+          <select id="detailUrgency">
+            <option value="high">高（緊急）</option>
+            <option value="low">低（非緊急）</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" id="detailSaveBtn">保存</button>
+      <button class="btn btn-ghost"   id="detailCancelBtn">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- フォーカスモード -->
+<div class="focus-overlay" id="focusOverlay" style="display:none">
+  <div class="focus-inner">
+    <div class="focus-mode-tabs">
+      <button class="focus-tab active" data-mode="flow">フロータイム</button>
+      <button class="focus-tab" data-mode="pomodoro">ポモドーロ</button>
+      <button class="focus-tab" data-mode="countdown">カウントダウン</button>
+    </div>
+    <div class="focus-task-label" id="focusTaskLabel">タスクを選択中</div>
+    <div class="focus-clock" id="focusClock">00:00</div>
+    <div class="focus-sub" id="focusSub"></div>
+    <div class="focus-controls">
+      <button class="focus-btn" id="focusStartBtn">▶ 開始</button>
+      <button class="focus-btn focus-btn-stop" id="focusStopBtn" style="display:none">■ 停止</button>
+      <button class="focus-btn focus-btn-ghost" id="focusResetBtn">↺ リセット</button>
+    </div>
+    <div class="focus-countdown-input" id="focusCountdownInput" style="display:none">
+      <input type="number" id="focusCountdownMin" placeholder="分" min="1" max="999" value="25">
+      <span>分</span>
+    </div>
+    <div class="focus-pomodoro-info" id="focusPomodoroInfo" style="display:none">
+      <span id="focusPomodoroPhase">作業中</span>
+      <span id="focusPomodoroCount">セット: 1/4</span>
+    </div>
+    <button class="focus-close" id="focusCloseBtn">✕ 閉じる</button>
+  </div>
+</div>
+
+<!-- トースト通知 -->
+<div class="toast" id="toast"></div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

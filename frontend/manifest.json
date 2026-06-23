@@ -1,0 +1,28 @@
+{
+  "name": "Ink Productivity",
+  "short_name": "InkProd",
+  "description": "タスク管理 × 時間計測 × AI分解 by Ink Inc.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0d0d0f",
+  "theme_color": "#7c6aff",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/static/Ink_Productivity.png",
+      "sizes": "1024x1024",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/Ink_Productivity.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/static/Ink_Productivity.png",
+      "sizes": "any",
+      "type": "image/png"
+    }
+  ]
+}
