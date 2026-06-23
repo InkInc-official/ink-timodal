@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ink Productivity</title>
+<title>Ink Timodal</title>
 <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@300;400;500;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/style.css">
 <link rel="manifest" href="/static/manifest.json">
@@ -24,8 +24,8 @@
 <!-- ヘッダー -->
 <header class="header">
   <div class="header-left">
-    <span class="logo"><span class="logo-ink">Ink</span> Productivity</span>
-    <span class="badge">v1.0</span>
+    <span class="logo"><span class="logo-ink">Ink</span> Timodal</span>
+    <span class="badge">v2.0</span>
   </div>
   <div class="header-center">
     <span class="clock" id="clock">--:--:--</span>
@@ -63,6 +63,14 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
       <span>分析</span>
     </button>
+    <button class="nav-btn" data-tab="mood">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+      <span>ムード</span>
+    </button>
+    <button class="nav-btn" data-tab="journal">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      <span>ジャーナル</span>
+    </button>
     <button class="nav-btn" data-tab="settings">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
       <span>設定</span>
@@ -92,6 +100,14 @@
       <button class="tab-btn" data-tab="analysis">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
         分析
+      </button>
+      <button class="tab-btn" data-tab="mood">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+        ムード
+      </button>
+      <button class="tab-btn" data-tab="journal">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>
+        日記
       </button>
       <button class="tab-btn" data-tab="settings">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
@@ -313,6 +329,60 @@
       </div>
     </section>
 
+    <!-- ── ムードタブ ── -->
+    <section class="tab" id="tab-mood">
+      <div class="tab-header">
+        <h2>ムードトラッカー</h2>
+      </div>
+
+      <!-- 今日のムード記録 -->
+      <div class="section-block">
+        <div class="section-title">今日の気分を記録</div>
+        <div class="mood-selector" id="moodSelector">
+          <button class="mood-btn" data-score="0" title="最悪">
+            <img src="/static/icons/moon0.svg" class="moon-icon">
+            <span>新月</span>
+          </button>
+          <button class="mood-btn" data-score="1" title="悪い">
+            <img src="/static/icons/moon1.svg" class="moon-icon">
+            <span>三日月</span>
+          </button>
+          <button class="mood-btn" data-score="2" title="普通">
+            <img src="/static/icons/moon2.svg" class="moon-icon">
+            <span>半月</span>
+          </button>
+          <button class="mood-btn" data-score="3" title="良い">
+            <img src="/static/icons/moon3.svg" class="moon-icon">
+            <span>十三夜</span>
+          </button>
+          <button class="mood-btn" data-score="4" title="最高">
+            <img src="/static/icons/moon4.svg" class="moon-icon">
+            <span>満月</span>
+          </button>
+        </div>
+        <div class="mood-note-row">
+          <input type="text" id="moodNote" placeholder="一言メモ（任意）" autocomplete="off">
+          <button class="btn btn-primary" id="moodSaveBtn">記録</button>
+        </div>
+        <div class="mood-today" id="moodToday"></div>
+      </div>
+
+      <!-- ムード履歴 -->
+      <div class="section-block">
+        <div class="section-title">過去30日の記録</div>
+        <div class="mood-history" id="moodHistory"></div>
+      </div>
+    </section>
+
+    <!-- ── ジャーナルタブ ── -->
+    <section class="tab" id="tab-journal">
+      <div class="tab-header">
+        <h2>ジャーナル</h2>
+        <button class="btn btn-primary" id="newJournalBtn">＋ 新しい日記</button>
+      </div>
+      <div id="journalList" class="journal-list"></div>
+    </section>
+
     <!-- ── 分析タブ ── -->
     <section class="tab" id="tab-analysis">
       <div class="tab-header">
@@ -386,6 +456,25 @@
     <div class="modal-actions">
       <button class="btn btn-primary" id="kanbanColSaveBtn">保存</button>
       <button class="btn btn-ghost"   id="kanbanColCancelBtn">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<!-- ジャーナル作成・編集モーダル -->
+<div class="modal-overlay" id="journalModal" style="display:none">
+  <div class="modal modal-journal">
+    <div class="modal-title" id="journalModalTitle">新しい日記</div>
+    <input type="hidden" id="journalId">
+    <div class="journal-prompt-bar" id="journalPromptBar" style="display:none">
+      <span class="journal-prompt-text" id="journalPromptText"></span>
+    </div>
+    <input type="text" id="journalTitle" placeholder="タイトル（任意）" autocomplete="off">
+    <textarea id="journalContent" placeholder="今日のことを書いてください…" rows="10"></textarea>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="journalPromptBtn">💡 AIに問いかけてもらう</button>
+      <div style="flex:1"></div>
+      <button class="btn btn-primary" id="journalSaveBtn">保存</button>
+      <button class="btn btn-ghost"   id="journalCancelBtn">閉じる</button>
     </div>
   </div>
 </div>

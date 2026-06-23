@@ -1005,3 +1005,99 @@ textarea   { resize: vertical; }
 @media (max-width: 640px) {
   .kanban-col { width: 200px; }
 }
+
+/* ════════════════════════════════════════
+   ムードトラッカー
+════════════════════════════════════════ */
+.mood-selector {
+  display: flex; gap: 12px; justify-content: center;
+  padding: 16px 0; flex-wrap: wrap;
+}
+.mood-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  background: none; border: 2px solid transparent;
+  border-radius: 12px; padding: 12px 16px;
+  cursor: pointer; transition: all 0.2s;
+  color: var(--muted);
+  font-family: 'Zen Kaku Gothic New', sans-serif;
+  font-size: 11px;
+}
+.mood-btn:hover    { border-color: var(--ink1); color: var(--text); background: rgba(124,106,255,.08); }
+.mood-btn.selected { border-color: var(--ink1); color: var(--ink1); background: rgba(124,106,255,.12); }
+.moon-icon { width: 48px; height: 48px; }
+
+.mood-note-row {
+  display: flex; gap: 8px; margin-top: 12px;
+}
+.mood-note-row input { flex: 1; }
+
+.mood-today {
+  margin-top: 12px; font-size: 13px; color: var(--muted);
+  min-height: 20px;
+}
+
+.mood-history { display: flex; flex-direction: column; gap: 6px; }
+.mood-history-item {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+}
+.mood-history-moon  { width: 28px; height: 28px; flex-shrink: 0; }
+.mood-history-date  { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); flex-shrink: 0; }
+.mood-history-label { color: var(--ink1); font-size: 12px; flex-shrink: 0; }
+.mood-history-note  { flex: 1; font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mood-del-btn {
+  background: none; border: none; color: var(--muted);
+  font-size: 11px; cursor: pointer; padding: 2px 6px;
+  border-radius: 4px; opacity: 0; transition: opacity 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+.mood-history-item:hover .mood-del-btn { opacity: 1; }
+.mood-del-btn:hover { color: var(--danger); }
+
+/* ════════════════════════════════════════
+   ジャーナリング
+════════════════════════════════════════ */
+.journal-list { display: flex; flex-direction: column; gap: 10px; }
+.journal-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.journal-card:hover { border-color: var(--ink1); }
+.journal-card-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.journal-card-title  { flex: 1; font-weight: 600; font-size: 14px; }
+.journal-card-date   { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); flex-shrink: 0; }
+.journal-card-preview { font-size: 12px; color: var(--muted); line-height: 1.6; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.journal-card-del {
+  background: none; border: none; color: var(--muted);
+  font-size: 13px; cursor: pointer; padding: 2px 6px;
+  border-radius: 4px; opacity: 0; transition: opacity 0.15s, color 0.15s;
+}
+.journal-card:hover .journal-card-del { opacity: 1; }
+.journal-card-del:hover { color: var(--danger); }
+
+.modal-journal { width: 600px; }
+.modal-journal textarea { min-height: 240px; resize: vertical; }
+
+.journal-prompt-bar {
+  background: rgba(124,106,255,.08);
+  border: 1px solid rgba(124,106,255,.3);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px; color: var(--ink1);
+  line-height: 1.6;
+}
+
+@media (max-width: 640px) {
+  .mood-selector { gap: 8px; }
+  .mood-btn      { padding: 8px 10px; }
+  .moon-icon     { width: 36px; height: 36px; }
+  .modal-journal { width: 100%; }
+}

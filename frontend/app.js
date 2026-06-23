@@ -88,6 +88,8 @@ function switchTab(tabName) {
   document.getElementById('tab-' + tabName).classList.add('active');
   if (tabName === 'today')    loadTodayTab();
   if (tabName === 'tasks')    loadTasksTab();
+  if (tabName === 'mood')     loadMoodTab();
+  if (tabName === 'journal')  loadJournalTab();
   if (tabName === 'kanban')   loadKanbanTab();
   if (tabName === 'matrix')   loadMatrixTab();
   if (tabName === 'analysis') loadAnalysisTab();
@@ -1287,4 +1289,193 @@ document.getElementById('kanbanColSaveBtn')?.addEventListener('click', async () 
   }
   document.getElementById('kanbanColModal').style.display = 'none';
   loadKanbanTab();
+});
+
+// ════════════════════════════════════════
+// ムードトラッカー
+// ════════════════════════════════════════
+const MOOD_LABELS = ['新月', '三日月', '半月', '十三夜', '満月'];
+const MOOD_DESCS  = ['最悪', '悪い', '普通', '良い', '最高'];
+let _selectedMood = null;
+
+function moonImg(score, size = 28) {
+  return `<img src="/static/icons/moon${score}.svg" style="width:${size}px;height:${size}px">`;
+}
+
+async function loadMoodTab() {
+  // 今日のムード
+  const today = await api('GET', '/api/mood/today').catch(() => null);
+  const todayEl = document.getElementById('moodToday');
+  if (today && today.id) {
+    todayEl.innerHTML = `今日の最新記録：${moonImg(today.score, 20)} <span style="color:var(--ink1)">${MOOD_LABELS[today.score]}</span>（${MOOD_DESCS[today.score]}）<span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted)">${today.recorded_at.slice(11,16)}</span>${today.note ? ` — ${today.note}` : ''}`;
+    // 選択済みを反映
+    document.querySelectorAll('.mood-btn').forEach(btn => {
+      btn.classList.toggle('selected', parseInt(btn.dataset.score) === today.score);
+    });
+    _selectedMood = today.score;
+  } else {
+    todayEl.innerHTML = 'まだ今日の記録がありません';
+  }
+
+  // 履歴
+  const history = await api('GET', '/api/mood/history?limit=30').catch(() => []);
+  const histEl  = document.getElementById('moodHistory');
+  if (!history.length) {
+    histEl.innerHTML = '<div class="empty-state" style="padding:20px"><img src="/static/Ink_Productivity.png" style="width:50px;opacity:.35;margin-bottom:6px"><br>まだ記録がありません</div>';
+    return;
+  }
+  histEl.innerHTML = history.map(m => `
+    <div class="mood-history-item" data-mid="${m.id}">
+      <span class="mood-history-moon">${moonImg(m.score, 28)}</span>
+      <span class="mood-history-label">${MOOD_LABELS[m.score]}</span>
+      <span class="mood-history-date">${m.recorded_at.slice(0,10)} ${m.recorded_at.slice(11,16)}</span>
+      <span class="mood-history-note">${m.note || ''}</span>
+      <button class="mood-del-btn" data-mid="${m.id}">✕</button>
+    </div>
+  `).join('');
+
+  histEl.querySelectorAll('.mood-del-btn').forEach(btn => {
+    btn.addEventListener('click', async e => {
+      e.stopPropagation();
+      const ok = await showConfirm('記録を削除', 'このムード記録を削除しますか？');
+      if (!ok) return;
+      await api('DELETE', `/api/mood/${btn.dataset.mid}`);
+      showToast('削除しました');
+      loadMoodTab();
+    });
+  });
+}
+
+// ムードボタン選択
+document.getElementById('moodSelector')?.addEventListener('click', e => {
+  const btn = e.target.closest('.mood-btn');
+  if (!btn) return;
+  _selectedMood = parseInt(btn.dataset.score);
+  document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+});
+
+// ムード保存
+document.getElementById('moodSaveBtn')?.addEventListener('click', async () => {
+  if (_selectedMood === null) { showToast('気分を選んでください'); return; }
+  const note = document.getElementById('moodNote').value.trim() || null;
+  await api('POST', '/api/mood', { score: _selectedMood, note });
+  document.getElementById('moodNote').value = '';
+  showToast(`${MOOD_LABELS[_selectedMood]}（${MOOD_DESCS[_selectedMood]}）を記録しました`);
+  loadMoodTab();
+});
+
+// ════════════════════════════════════════
+// ジャーナリング
+// ════════════════════════════════════════
+const AI_PROMPTS = [
+  '今日一番集中できた瞬間はいつでしたか？',
+  '今日やり残したことと、その理由を書いてみましょう。',
+  '今日の自分を一言で表すとしたら？',
+  '今感じているモヤモヤを、そのまま書いてみましょう。',
+  '今日の小さな達成を3つ書いてみましょう。',
+  '明日の自分に一言メッセージを送るとしたら？',
+  '今日のエネルギーはどこから来ていましたか？',
+  '今日誰かに感謝したいことはありましたか？',
+  '今週やりたいことで、まだできていないことは？',
+  '今の気持ちを天気で表すとしたら何ですか？',
+  '今日避けていたことはありましたか？なぜ？',
+  '最近ずっと気になっていることを書いてみましょう。',
+];
+
+async function loadJournalTab() {
+  const journals = await api('GET', '/api/journals?limit=20').catch(() => []);
+  const list = document.getElementById('journalList');
+  if (!journals.length) {
+    list.innerHTML = '<div class="empty-state" style="padding:40px"><img src="/static/Ink_Productivity.png" style="width:60px;opacity:.35;margin-bottom:8px"><br>まだ日記がありません<br><small>＋ 新しい日記 から始めてみましょう</small></div>';
+    return;
+  }
+  list.innerHTML = journals.map(j => `
+    <div class="journal-card" data-jid="${j.id}">
+      <div class="journal-card-header">
+        <span class="journal-card-title">${j.title || '無題'}</span>
+        <span class="journal-card-date">${j.recorded_at.slice(0,10)} ${j.recorded_at.slice(11,16)}</span>
+        <button class="journal-card-del" data-jid="${j.id}">✕</button>
+      </div>
+      <div class="journal-card-preview">${j.content.replace(/\n/g,' ')}</div>
+    </div>
+  `).join('');
+
+  list.querySelectorAll('.journal-card').forEach(card => {
+    card.addEventListener('click', e => {
+      if (e.target.classList.contains('journal-card-del')) return;
+      openJournalModal(parseInt(card.dataset.jid));
+    });
+  });
+  list.querySelectorAll('.journal-card-del').forEach(btn => {
+    btn.addEventListener('click', async e => {
+      e.stopPropagation();
+      const ok = await showConfirm('日記を削除', 'この日記を削除しますか？');
+      if (!ok) return;
+      await api('DELETE', `/api/journals/${btn.dataset.jid}`);
+      showToast('削除しました');
+      loadJournalTab();
+    });
+  });
+}
+
+async function openJournalModal(journalId = null) {
+  const titleEl   = document.getElementById('journalModalTitle');
+  const idEl      = document.getElementById('journalId');
+  const titleInput = document.getElementById('journalTitle');
+  const contentEl = document.getElementById('journalContent');
+  const promptBar = document.getElementById('journalPromptBar');
+
+  promptBar.style.display = 'none';
+
+  if (journalId) {
+    const j = await api('GET', `/api/journals/${journalId}`);
+    titleEl.textContent  = '日記を編集';
+    idEl.value           = j.id;
+    titleInput.value     = j.title || '';
+    contentEl.value      = j.content;
+    if (j.prompt) {
+      document.getElementById('journalPromptText').textContent = j.prompt;
+      promptBar.style.display = 'block';
+    }
+  } else {
+    titleEl.textContent = '新しい日記';
+    idEl.value          = '';
+    titleInput.value    = '';
+    contentEl.value     = '';
+  }
+  document.getElementById('journalModal').style.display = 'flex';
+  setTimeout(() => contentEl.focus(), 100);
+}
+
+document.getElementById('newJournalBtn')?.addEventListener('click', () => openJournalModal());
+
+document.getElementById('journalCancelBtn')?.addEventListener('click', () => {
+  document.getElementById('journalModal').style.display = 'none';
+});
+
+// AIプロンプトボタン
+document.getElementById('journalPromptBtn')?.addEventListener('click', () => {
+  const prompt = AI_PROMPTS[Math.floor(Math.random() * AI_PROMPTS.length)];
+  document.getElementById('journalPromptText').textContent = prompt;
+  document.getElementById('journalPromptBar').style.display = 'block';
+  document.getElementById('journalContent').focus();
+});
+
+// ジャーナル保存
+document.getElementById('journalSaveBtn')?.addEventListener('click', async () => {
+  const id      = document.getElementById('journalId').value;
+  const title   = document.getElementById('journalTitle').value.trim() || null;
+  const content = document.getElementById('journalContent').value.trim();
+  const prompt  = document.getElementById('journalPromptBar').style.display !== 'none'
+    ? document.getElementById('journalPromptText').textContent : null;
+  if (!content) { showToast('本文を入力してください'); return; }
+  if (id) {
+    await api('PUT', `/api/journals/${id}`, { title, content });
+  } else {
+    await api('POST', '/api/journals', { title, content, prompt });
+  }
+  document.getElementById('journalModal').style.display = 'none';
+  showToast('保存しました');
+  loadJournalTab();
 });

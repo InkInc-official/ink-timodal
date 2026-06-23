@@ -91,6 +91,21 @@ def init_db():
         color     TEXT    DEFAULT '#7c6aff'
     );
 
+    CREATE TABLE IF NOT EXISTS moods (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        score      INTEGER NOT NULL CHECK(score BETWEEN 0 AND 4),
+        note       TEXT,
+        recorded_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS journals (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        title      TEXT,
+        content    TEXT NOT NULL,
+        prompt     TEXT,
+        recorded_at TEXT NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS category_fixed (
         task_name   TEXT PRIMARY KEY,
         category    TEXT NOT NULL,
@@ -525,6 +540,82 @@ def get_task_suggestions() -> list:
     rows = [dict(r) for r in cur.fetchall()]
     con.close()
     return [r['name'] for r in rows]
+
+
+# ── ムードトラッカー ──────────────────────────────
+def save_mood(score: int, note: str = None) -> int:
+    return db_insert('moods', {
+        'score':       score,
+        'note':        note,
+        'recorded_at': datetime.datetime.now().isoformat(),
+    })
+
+def get_moods(limit: int = 30) -> list:
+    con = get_con()
+    cur = con.cursor()
+    cur.execute('SELECT * FROM moods ORDER BY recorded_at DESC LIMIT ?', (limit,))
+    rows = [dict(r) for r in cur.fetchall()]
+    con.close()
+    return rows
+
+def get_today_mood() -> dict:
+    today = datetime.date.today().isoformat()
+    con = get_con()
+    cur = con.cursor()
+    cur.execute(
+        'SELECT * FROM moods WHERE recorded_at >= ? ORDER BY recorded_at DESC LIMIT 1',
+        (today,)
+    )
+    row = cur.fetchone()
+    con.close()
+    return dict(row) if row else None
+
+def get_mood_stats(days: int = 30) -> list:
+    since = (datetime.date.today() - datetime.timedelta(days=days)).isoformat()
+    con = get_con()
+    cur = con.cursor()
+    cur.execute(
+        'SELECT * FROM moods WHERE recorded_at >= ? ORDER BY recorded_at ASC',
+        (since,)
+    )
+    rows = [dict(r) for r in cur.fetchall()]
+    con.close()
+    return rows
+
+
+# ── ジャーナリング ──────────────────────────────────
+def save_journal(content: str, title: str = None, prompt: str = None) -> int:
+    return db_insert('journals', {
+        'title':       title,
+        'content':     content,
+        'prompt':      prompt,
+        'recorded_at': datetime.datetime.now().isoformat(),
+    })
+
+def get_journals(limit: int = 20, date_from: str = None) -> list:
+    con = get_con()
+    cur = con.cursor()
+    if date_from:
+        cur.execute(
+            'SELECT * FROM journals WHERE recorded_at >= ? ORDER BY recorded_at DESC LIMIT ?',
+            (date_from, limit)
+        )
+    else:
+        cur.execute('SELECT * FROM journals ORDER BY recorded_at DESC LIMIT ?', (limit,))
+    rows = [dict(r) for r in cur.fetchall()]
+    con.close()
+    return rows
+
+def get_journal(journal_id: int) -> dict:
+    con = get_con()
+    cur = con.cursor()
+    cur.execute('SELECT * FROM journals WHERE id=?', (journal_id,))
+    row = cur.fetchone()
+    con.close()
+    return dict(row) if row else None
+
+def delete_journal(journal_id: int):
+    db_delete('journals', {'id': journal_id})
 
 
 # ── 今日のサマリー ────────────────────────────────

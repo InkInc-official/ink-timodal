@@ -126,6 +126,19 @@ class KanbanColumnUpdate(BaseModel):
     color:    Optional[str] = None
     position: Optional[int] = None
 
+class MoodCreate(BaseModel):
+    score: int
+    note:  Optional[str] = None
+
+class JournalCreate(BaseModel):
+    content: str
+    title:   Optional[str] = None
+    prompt:  Optional[str] = None
+
+class JournalUpdate(BaseModel):
+    content: Optional[str] = None
+    title:   Optional[str] = None
+
 class BulkTaskCreate(BaseModel):
     project_id: int
     tasks:      list
@@ -492,6 +505,72 @@ def today_report():
 def weekly_report():
     return db.get_weekly_summary()
 
+
+# ═══════════════════════════════════════════════════
+# ムード API
+# ═══════════════════════════════════════════════════
+
+@app.get("/api/mood/today")
+def get_today_mood():
+    return db.get_today_mood() or {}
+
+@app.get("/api/mood/history")
+def get_mood_history(limit: int = 30):
+    return db.get_moods(limit=limit)
+
+@app.get("/api/mood/stats")
+def get_mood_stats(days: int = 30):
+    return db.get_mood_stats(days=days)
+
+@app.delete("/api/mood/{mood_id}")
+def delete_mood(mood_id: int):
+    db.db_delete('moods', {'id': mood_id})
+    return {"message": "削除しました"}
+
+@app.post("/api/mood", status_code=201)
+def save_mood(body: MoodCreate):
+    if not 0 <= body.score <= 4:
+        raise HTTPException(400, "スコアは0〜4で指定してください")
+    mood_id = db.save_mood(body.score, body.note)
+    return {"id": mood_id, "message": "記録しました"}
+
+
+# ═══════════════════════════════════════════════════
+# ジャーナル API
+# ═══════════════════════════════════════════════════
+
+@app.get("/api/journals")
+def list_journals(limit: int = 20, date_from: Optional[str] = None):
+    return db.get_journals(limit=limit, date_from=date_from)
+
+@app.get("/api/journals/{journal_id}")
+def get_journal(journal_id: int):
+    j = db.get_journal(journal_id)
+    if not j:
+        raise HTTPException(404, "日記が見つかりません")
+    return j
+
+@app.post("/api/journals", status_code=201)
+def create_journal(body: JournalCreate):
+    journal_id = db.save_journal(
+        content=body.content,
+        title=body.title,
+        prompt=body.prompt,
+    )
+    return {"id": journal_id, "message": "保存しました"}
+
+@app.put("/api/journals/{journal_id}")
+def update_journal(journal_id: int, body: JournalUpdate):
+    data = {k: v for k, v in body.dict().items() if v is not None}
+    if not data:
+        raise HTTPException(400, "更新データがありません")
+    db.db_update('journals', data, {'id': journal_id})
+    return {"message": "更新しました"}
+
+@app.delete("/api/journals/{journal_id}")
+def delete_journal(journal_id: int):
+    db.delete_journal(journal_id)
+    return {"message": "削除しました"}
 
 # ═══════════════════════════════════════════════════
 # AI API
