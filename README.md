@@ -1,177 +1,125 @@
-# 🖤 Ink Productivity
+# 🖤 Ink Timodal
 
-**タスク管理 × 時間計測 × AI分解 — Personal Productivity Tool by Ink Inc.**
+**Time × Mood × Journal × Task — ADHDクリエイターのための完全ローカル自己観察ツール**
 
-> AI Creation, Human Care. The Future Drawn Together.
+> AI Creation, Human Care. The Future Drawn Together. — Ink Inc.
 
-[![version](https://img.shields.io/badge/version-1.0.0-7c6aff)](#)
-[![python](https://img.shields.io/badge/Python-3.10%2B-blue)](#)
+[![version](https://img.shields.io/badge/version-2.0.0-7c6aff)](#)
 [![license](https://img.shields.io/badge/license-MIT-green)](#)
+[![docker](https://img.shields.io/badge/docker-ready-blue)](#)
 
 ---
 
-## 概要
+## コンセプト
 
-Ink ProductivityはInk Habitの後継として設計された、MAGICNUC常駐型のPersonal Productivity Toolです。VikunjaとSuper Productivityの二刀流構成を一本化し、Inkブランドに統一した完全自作ツールです。
+あなたの思考・感情・作業記録は、あなたのデバイスの外に出ません。
+GoogleもOpenAIも見ていません。AIも自分のPCで動きます。
+ここは完全にあなただけの空間です。
 
-### 主な機能
+精神保健福祉士10年以上の経験を持つ開発者が設計した、ADHDや過集中傾向のあるクリエイター向けの自己管理ツールです。
 
-| カテゴリ | 機能 |
+---
+
+## 主な機能
+
+| 機能 | 説明 |
 |---|---|
-| **タスク管理** | プロジェクト・タスク・サブタスク2階層・優先度・期日・担当者・説明・ステータス管理 |
-| **カンバン** | 列のカスタマイズ・ドラッグ&ドロップ・列名=ステータス名で連動 |
-| **マトリックス** | アイゼンハワーマトリックス・第0象限（未設定）・ドラッグ&ドロップ配置 |
-| **タイムトラッキング** | クイックスタート・マルチ計測・見積もりvs実績・リマインダー・過去セッション追加 |
-| **フォーカスモード** | フロータイム・ポモドーロ（25分+5分）・カウントダウン |
-| **AI機能** | Ollamaによるタスク自動分解・カテゴリ自動判定・固定学習・LION EYE傾向分析 |
-| **スケジュール** | 期間指定・期限切れ・日付なしタスクの絞り込み表示 |
-| **分析** | 週次レポート・カテゴリ別集計・LION EYE（基本/LLMモード） |
-| **多端末対応** | Tailscale経由でPC・スマホどこからでもアクセス・スマホ下部タブバー・PWA対応 |
-
----
-
-## 必要な環境
-
-- **Python** 3.10以上
-- **Ollama** — https://ollama.com/
-- **MAGICNUC AG1**（Tailscale接続済み・Windows 11）
+| **タスク管理** | プロジェクト・カンバン・アイゼンハワーマトリックス |
+| **タイムトラッキング** | 作業時間の計測・過集中防止リマインダー |
+| **フォーカスモード** | フロータイム・ポモドーロ・カウントダウン |
+| **AI分解** | ローカルLLMでタスクを自動分解 |
+| **LION EYE** | 事実ベースの傾向分析（褒めない・叱らない） |
+| **ムードトラッカー** | 月の満ち欠けで気分を記録 |
+| **ジャーナリング** | AIプロンプト付きの日記機能 |
+| **完全ローカル** | データは自分のサーバーにのみ保存 |
 
 ---
 
 ## セットアップ
 
-### 1. Ollamaと推奨モデルの準備
+### 必要なもの
 
-```powershell
-# Windowsの場合はhttps://ollama.com/からインストーラーをダウンロード
-ollama pull gemma2:9b
-ollama pull qwen2.5:7b
+- **Docker** — https://docs.docker.com/get-docker/
+- **無料ドメイン（HTTPS化する場合）** — https://www.duckdns.org
+
+### クイックスタート
+
+```bash
+# リポジトリをクローン
+git clone https://github.com/InkInc-official/ink-timodal.git
+cd ink-timodal
+
+# セットアップスクリプトを実行（Linux/Mac）
+chmod +x setup.sh
+./setup.sh
 ```
 
-### 2. 依存パッケージのインストール
+Windowsの場合は手動セットアップをご覧ください。
 
-```powershell
-cd C:\Users\espre\ink-productivity
-pip install -r requirements.txt
+### 手動セットアップ
+
+```bash
+# 1. 設定ファイルを作成
+cp .env.example .env
+# .envを編集してドメイン・トークン・メールを入力
+
+# 2. 起動
+docker compose up -d
+
+# 3. 証明書取得（DuckDNSを使う場合）
+docker compose run --rm certbot certonly \
+  --manual --preferred-challenges dns \
+  --email your@email.com --agree-tos --no-eff-email \
+  -d your-domain.duckdns.org
 ```
 
-### 3. 起動
+### Ollamaモデルのダウンロード（AI機能を使う場合）
 
-```powershell
-uvicorn main:app --host 0.0.0.0 --port 8020
-```
-
-### 4. アクセス
-
-```
-# ローカル
-http://localhost:8020
-
-# Tailscale経由（全端末共通）
-http://100.65.206.126:8020
-```
-
----
-
-## 自動起動設定（NSSM・推奨）
-
-NSSMを使ってWindowsサービスとして登録することで、PC起動時に自動で立ち上がります。
-
-```powershell
-# NSSMのインストール
-winget install nssm
-
-# サービス登録（GUIが開く）
-nssm install InkProductivity
-```
-
-GUIの設定値：
-
-| 項目 | 値 |
-|---|---|
-| Path | `C:\Users\espre\AppData\Local\Programs\Python\Python312\Scripts\uvicorn.exe` |
-| Startup directory | `C:\Users\espre\ink-productivity` |
-| Arguments | `main:app --host 0.0.0.0 --port 8020` |
-
-```powershell
-# サービス開始
-nssm start InkProductivity
-
-# 再起動
-nssm restart InkProductivity
-
-# 停止
-nssm stop InkProductivity
+```bash
+docker compose exec ollama ollama pull gemma2:9b
 ```
 
 ---
 
-## ファイル構成
+## HTTPS化について
 
-```
-ink-productivity/
-├── main.py                  # FastAPIサーバー本体・全APIエンドポイント
-├── database.py              # SQLite操作・DB初期化・カテゴリ学習
-├── ai_client.py             # Ollama連携・AI分解・LION EYE分析
-├── ink_productivity.db      # SQLiteデータベース（自動生成・gitignore対象）
-├── requirements.txt
-├── README.md
-└── frontend/
-    ├── index.html           # メイン画面（全タブ・全モーダル）
-    ├── style.css            # スタイル（ダークテーマ・レスポンシブ）
-    ├── app.js               # フロントエンドロジック
-    ├── manifest.json        # PWAマニフェスト
-    ├── sw.js                # Service Worker
-    └── Ink_Productivity.png # アプリアイコン（gitignore対象）
+au 5G HOMEなどのモバイル回線ではポート開放ができない場合があります。
+その場合はCloudflare Tunnelをお使いください。
+
+```bash
+# Cloudflare Tunnelで起動（ポート開放不要）
+cloudflared tunnel --url http://localhost:8020
 ```
 
 ---
 
-## DBスキーマ概要
+## アーキテクチャ
 
-| テーブル | 用途 |
-|---|---|
-| `projects` | プロジェクト管理 |
-| `tasks` | タスク・サブタスク（importance/urgency/status含む） |
-| `sessions` | タイムトラッキング記録 |
-| `kanban_columns` | カンバン列定義（名前=ステータス名） |
-| `category_fixed` | カテゴリ固定学習データ |
-| `reports` | LION EYE分析結果 |
-
----
-
-## Ink Habitからのデータ移行
-
-```python
-import sqlite3
-
-src = sqlite3.connect('ink_habit.db')
-dst = sqlite3.connect('ink_productivity.db')
-src_cur = src.cursor()
-dst_cur = dst.cursor()
-
-src_cur.execute('SELECT * FROM sessions')
-rows = src_cur.fetchall()
-for row in rows:
-    dst_cur.execute('''
-        INSERT OR IGNORE INTO sessions
-        (id, name, category, started_at, ended_at, duration_sec, estimated_sec)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    ''', (row[0], row[1], row[2], row[3], row[4], row[5], row[6]))
-
-dst.commit()
-src.close()
-dst.close()
-print(f'{len(rows)}件のセッションを移行しました')
+```
+ブラウザ（PC・スマホ）
+↓ HTTPS
+Nginx（リバースプロキシ）
+↓
+FastAPI（Ink Timodal本体）
+↓              ↓
+SQLite         Ollama（ローカルLLM）
+（データ）
 ```
 
 ---
 
 ## ライセンス
 
-© 2026 黒井葉跡 / Ink Inc. — MIT License
+MIT License — © 2026 黒井葉跡 / Ink Inc.
 
 ---
 
-*Ink Inc. | AI Creation, Human Care. The Future Drawn Together.*
-*https://inkinc-hp.vercel.app/*
+## Ink Inc.について
+
+**AI Creation, Human Care. The Future Drawn Together.**
+
+AIによる創造と人によるケアを両立するライバー事務所です。
+
+- Web: https://inkinc-hp.vercel.app/
+- X: https://x.com/InkInc_Info
+- GitHub: https://github.com/InkInc-official

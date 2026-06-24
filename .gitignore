@@ -1,18 +1,31 @@
-# データベース（個人データを含むため除外）
+# データベース
 *.db
 *.db-shm
 *.db-wal
 
-# アイコン画像（著作権保護のため除外）
-frontend/Ink_Productivity.png
+# 環境設定（個人情報を含む）
+.env
+
+# 証明書・SSL
+certbot/conf/
+certbot/www/
+
+# Ollama（モデルデータ・大容量）
+ollama/
+
+# アプリデータ
+data/
 
 # Python
 __pycache__/
 *.pyc
 *.pyo
-*.pyd
-.env
+.venv/
 venv/
+
+# アイコン画像（著作権保護）
+frontend/Ink_Productivity.png
+frontend/icons/
 
 # OS
 .DS_Store
