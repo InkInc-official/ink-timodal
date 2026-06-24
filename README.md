@@ -10,6 +10,16 @@
 
 ---
 
+## デモ
+
+セルフホスト版のデモはこちらから確認できます（開発者の環境で動作中）：
+
+👉 **https://inkinc-official.github.io/ink-timodal**
+
+※ 個人サーバーで動作しているため、メンテナンス中は繋がらない場合があります。
+
+---
+
 ## コンセプト
 
 あなたの思考・感情・作業記録は、あなたのデバイスの外に出ません。
@@ -83,13 +93,26 @@ docker compose exec ollama ollama pull gemma2:9b
 
 ## HTTPS化について
 
-au 5G HOMEなどのモバイル回線ではポート開放ができない場合があります。
-その場合はCloudflare Tunnelをお使いください。
+### 光回線・固定回線の場合（推奨）
+
+DuckDNS + Let's Encryptで無料のHTTPSが使えます。`setup.sh` が自動で設定します。
+
+### au 5G HOME・モバイル回線の場合
+
+キャリアのCGNATによりポート開放ができません。Cloudflare Tunnelをお使いください。
 
 ```bash
-# Cloudflare Tunnelで起動（ポート開放不要）
+# Linux/Macの場合
+curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb -o cloudflared.deb
+sudo dpkg -i cloudflared.deb
+
+# トンネル起動（ポート開放不要・HTTPS自動）
 cloudflared tunnel --url http://localhost:8020
 ```
+
+表示された `https://xxxx.trycloudflare.com` のURLでアクセスできます。
+
+> **注意**: Quick Tunnelは再起動のたびURLが変わります。固定URLが必要な場合はGitHub PagesとCloudflared systemdサービスを組み合わせる方法をお試しください。
 
 ---
 
