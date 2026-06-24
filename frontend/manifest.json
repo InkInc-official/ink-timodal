@@ -1,7 +1,7 @@
 {
-  "name": "Ink Productivity",
-  "short_name": "InkProd",
-  "description": "タスク管理 × 時間計測 × AI分解 by Ink Inc.",
+  "name": "Ink Timodal",
+  "short_name": "Ink Timodal",
+  "description": "Time × Mood × Journal × Task — ADHDクリエイターのための完全ローカル自己観察ツール by Ink Inc.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0d0d0f",
