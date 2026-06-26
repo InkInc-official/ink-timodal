@@ -402,11 +402,14 @@ async function loadTasksTab() {
       list.innerHTML = '<div class="empty-state"><div class="lion-empty"><img src="/static/Ink_Productivity.png" style="width:80px;opacity:.4"></div>プロジェクトがありません<br><small>＋ プロジェクト ボタンで作成してください</small></div>';
       return;
     }
-    for (const p of projects) {
-      const tasks = await api('GET', `/api/tasks?project_id=${p.id}`);
-      const card  = buildProjectCard(p, tasks, openIds.has(String(p.id)));
+    // 並列でタスクを取得して高速化
+    const tasksList = await Promise.all(
+      projects.map(p => api('GET', `/api/tasks?project_id=${p.id}`))
+    );
+    projects.forEach((p, i) => {
+      const card = buildProjectCard(p, tasksList[i], openIds.has(String(p.id)));
       list.appendChild(card);
-    }
+    });
   } catch (e) { showToast('タスク取得エラー: ' + e.message); }
 }
 
@@ -673,30 +676,51 @@ document.getElementById('projectCancelBtn').addEventListener('click', () => {
   document.getElementById('projectModal').style.display = 'none';
 });
 document.getElementById('projectSaveBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('projectSaveBtn');
+  if (btn.disabled) return;
+  btn.disabled = true;
   const name  = document.getElementById('projectName').value.trim();
   const desc  = document.getElementById('projectDesc').value.trim();
   const color = document.querySelector('#colorPicks .color-pick.selected')?.dataset.color || '#7c6aff';
-  if (!name) { showToast('プロジェクト名を入力してください'); return; }
+  if (!name) { showToast('プロジェクト名を入力してください'); btn.disabled = false; return; }
   await api('POST', '/api/projects', { name, description: desc, color });
   document.getElementById('projectModal').style.display = 'none';
+  btn.disabled = false;
   showToast('プロジェクトを作成しました');
   loadTasksTab();
 });
 
 // タスク作成モーダル
-function openTaskModal(projectId, parentId) {
-  document.getElementById('taskProjectId').value = projectId || '';
-  document.getElementById('taskParentId').value  = parentId  || '';
-  document.getElementById('taskName').value      = '';
-  document.getElementById('taskCategory').value  = '';
-  document.getElementById('taskPriority').value  = 'medium';
-  document.getElementById('taskDueDate').value   = '';
-  document.getElementById('taskEstMin').value    = '';
-  document.getElementById('taskNote').value        = '';
+async function openTaskModal(projectId, parentId) {
+  document.getElementById('taskProjectId').value   = projectId || '';
+  document.getElementById('taskParentId').value    = parentId  || '';
+  document.getElementById('taskName').value        = '';
+  document.getElementById('taskCategory').value   = '';
+  document.getElementById('taskPriority').value   = 'medium';
+  document.getElementById('taskDueDate').value    = '';
+  document.getElementById('taskEstMin').value     = '';
   document.getElementById('taskDescription').value = '';
-  document.getElementById('taskAssignee').value    = '';
-  document.getElementById('taskImportance').value  = 'low';
-  document.getElementById('taskUrgency').value     = 'low';
+  document.getElementById('taskAssignee').value   = '';
+  document.getElementById('taskImportance').value = 'low';
+  document.getElementById('taskUrgency').value    = 'low';
+
+  // プロジェクト選択を毎回読み込む
+  const projSel = document.getElementById('taskModalProject');
+  projSel.innerHTML = '<option value="">プロジェクト未設定</option>';
+  try {
+    const projects = await api('GET', '/api/projects');
+    projects.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.name;
+      if (projectId && parseInt(p.id) === parseInt(projectId)) opt.selected = true;
+      projSel.appendChild(opt);
+    });
+  } catch(_) {}
+  projSel.onchange = () => {
+    document.getElementById('taskProjectId').value = projSel.value;
+  };
+
   document.getElementById('taskModal').style.display = 'flex';
 }
 document.getElementById('taskCancelBtn').addEventListener('click', () => {
@@ -715,7 +739,6 @@ document.getElementById('taskSaveBtn').addEventListener('click', async () => {
     priority:      document.getElementById('taskPriority').value,
     due_date:      document.getElementById('taskDueDate').value       || null,
     estimated_min: parseInt(document.getElementById('taskEstMin').value) || null,
-    note:          document.getElementById('taskNote').value          || null,
     description:   document.getElementById('taskDescription').value   || null,
     assignee:      document.getElementById('taskAssignee').value      || null,
     importance:    document.getElementById('taskImportance').value    || 'low',
@@ -1208,13 +1231,8 @@ function buildKanbanCol(col, tasks) {
   });
 
   // タスク追加ボタン
-  div.querySelector('.kanban-add-task-btn').addEventListener('click', () => {
+  div.querySelector('.kanban-add-task-btn').addEventListener('click', async () => {
     openTaskModal(null, null);
-    // デフォルトステータスをこの列に設定
-    setTimeout(() => {
-      const sel = document.getElementById('taskStatus');
-      if (sel) sel.value = col.name;
-    }, 100);
   });
 
   return div;

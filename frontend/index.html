@@ -25,7 +25,7 @@
 <header class="header">
   <div class="header-left">
     <span class="logo"><span class="logo-ink">Ink</span> Timodal</span>
-    <span class="badge">v2.0</span>
+    <span class="badge">v2.2</span>
   </div>
   <div class="header-center">
     <span class="clock" id="clock">--:--:--</span>
@@ -223,7 +223,7 @@
       <div class="section-block schedule-block">
         <div class="section-title">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-          今後の予定
+          タスクカレンダー
         </div>
         <div class="schedule-controls">
           <div class="schedule-dates">
@@ -515,6 +515,12 @@
     <input type="hidden" id="taskProjectId">
     <input type="hidden" id="taskParentId">
     <input type="text"   id="taskName"     placeholder="タスク名">
+    <div id="taskProjectSelectWrapper">
+      <label class="form-label">プロジェクト（任意）</label>
+      <select id="taskModalProject">
+        <option value="">プロジェクト未設定</option>
+      </select>
+    </div>
     <div class="form-row">
       <select id="taskCategory" class="select-sm">
         <option value="">カテゴリ自動判定</option>
@@ -539,7 +545,6 @@
       <label class="form-label">説明・プロンプトメモ（任意）</label>
       <textarea id="taskDescription" placeholder="説明・AIプロンプトのメモなど" rows="2"></textarea>
     </div>
-    <textarea id="taskNote" placeholder="メモ（任意）" rows="2"></textarea>
     <div>
       <label class="form-label">担当者・対象ライバー（任意）</label>
       <input type="text" id="taskAssignee" placeholder="例：〇〇ライバー">

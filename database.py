@@ -11,8 +11,10 @@ import datetime
 from pathlib import Path
 
 # ── パス ─────────────────────────────────────────
+import os
 APP_DIR = Path(__file__).parent
-DB_PATH = APP_DIR / "ink_productivity.db"
+_db_env = os.environ.get('DB_PATH', '')
+DB_PATH = Path(_db_env) if _db_env else APP_DIR / "ink_productivity.db"
 
 
 # ── DB初期化 ──────────────────────────────────────
