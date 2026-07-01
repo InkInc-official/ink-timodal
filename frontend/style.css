@@ -1126,3 +1126,48 @@ textarea   { resize: vertical; }
   transition: background 0.15s;
 }
 .btn-done-stop:hover { background: rgba(0,200,100,.25); }
+
+/* ════════════════════════════════════════
+   タスク検索
+════════════════════════════════════════ */
+.search-row {
+  display: flex; gap: 12px; align-items: center;
+}
+.search-row input { flex: 1; }
+.task-search-results {
+  margin-top: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.search-result-item {
+  padding: 10px 14px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.15s;
+}
+.search-result-item:last-child { border-bottom: none; }
+.search-result-item:hover { background: var(--surface2); }
+.search-result-name { font-size: 14px; margin-bottom: 4px; }
+.search-result-name.done-text { text-decoration: line-through; color: var(--muted); }
+.search-result-meta { display: flex; gap: 8px; font-size: 12px; color: var(--muted); }
+
+/* ════════════════════════════════════════
+   アーカイブ
+════════════════════════════════════════ */
+.archive-list { display: flex; flex-direction: column; gap: 6px; }
+.archive-item {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+}
+.archive-item-info { flex: 1; overflow: hidden; }
+.archive-item-name {
+  font-size: 14px; color: var(--muted);
+  text-decoration: line-through;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.archive-item-meta { display: flex; gap: 8px; font-size: 12px; margin-top: 4px; }
+.archive-item-actions { display: flex; gap: 6px; flex-shrink: 0; }

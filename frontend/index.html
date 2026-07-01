@@ -71,6 +71,10 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
       <span>ジャーナル</span>
     </button>
+    <button class="nav-btn" data-tab="archive">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+      <span>アーカイブ</span>
+    </button>
     <button class="nav-btn" data-tab="settings">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
       <span>設定</span>
@@ -206,6 +210,17 @@
       <div class="tab-header">
         <h2>タスク</h2>
         <button class="btn btn-primary" id="newProjectBtn">＋ プロジェクト</button>
+      </div>
+
+      <!-- タスク検索 -->
+      <div class="section-block" style="padding:12px 16px">
+        <div class="search-row">
+          <input type="text" id="taskSearchInput" placeholder="🔍 タスクを検索…" autocomplete="off">
+          <label class="check-label" style="font-size:12px">
+            <input type="checkbox" id="searchIncludeDone"> 完了済みも含む
+          </label>
+        </div>
+        <div id="taskSearchResults" class="task-search-results" style="display:none"></div>
       </div>
 
       <!-- AI分解 -->
@@ -390,6 +405,18 @@
         <button class="btn btn-primary" id="newJournalBtn">＋ 新しい日記</button>
       </div>
       <div id="journalList" class="journal-list"></div>
+    </section>
+
+    <!-- ── アーカイブタブ ── -->
+    <section class="tab" id="tab-archive">
+      <div class="tab-header">
+        <h2>アーカイブ</h2>
+        <button class="btn btn-accent" id="runArchiveBtn">↯ アーカイブを実行</button>
+      </div>
+      <div class="section-block" style="padding:12px 16px">
+        <input type="text" id="archiveSearchInput" placeholder="🔍 アーカイブを検索…" autocomplete="off">
+      </div>
+      <div id="archiveList" class="archive-list"></div>
     </section>
 
     <!-- ── 分析タブ ── -->

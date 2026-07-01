@@ -46,6 +46,8 @@ def init_db():
         status        TEXT    DEFAULT 'todo',
         importance    TEXT,
         urgency       TEXT,
+        archived      INTEGER DEFAULT 0,
+        archived_at   TEXT,
         done          INTEGER DEFAULT 0,
         created_at    TEXT    NOT NULL,
         done_at       TEXT,
@@ -321,7 +323,7 @@ def delete_project(project_id: int):
 def get_tasks(project_id: int = None, done: int = None) -> list:
     con = get_con()
     cur = con.cursor()
-    sql    = 'SELECT * FROM tasks WHERE 1=1'
+    sql    = 'SELECT * FROM tasks WHERE archived=0'
     params = []
     if project_id is not None:
         sql += ' AND project_id=?'
@@ -550,6 +552,83 @@ def get_task_suggestions() -> list:
     con.close()
     return [r['name'] for r in rows]
 
+
+# ── アーカイブ処理 ──────────────────────────────────
+def run_auto_archive():
+    """月またぎの完了タスクを自動アーカイブ"""
+    import calendar
+    con = get_con()
+    cur = con.cursor()
+    # 今月1日より前に完了したタスクをアーカイブ
+    today = datetime.date.today()
+    first_of_month = today.replace(day=1).isoformat()
+    cur.execute('''
+        UPDATE tasks SET archived=1
+        WHERE done=1 AND archived=0
+        AND done_at IS NOT NULL
+        AND done_at < ?
+    ''', (first_of_month,))
+    archived = cur.rowcount
+    con.commit()
+    con.close()
+    return archived
+
+def run_auto_delete():
+    """18ヶ月以上前にアーカイブされたタスクを削除"""
+    con = get_con()
+    cur = con.cursor()
+    cutoff = (datetime.date.today() - datetime.timedelta(days=548)).isoformat()
+    cur.execute('''
+        DELETE FROM tasks
+        WHERE archived=1
+        AND done_at IS NOT NULL
+        AND done_at < ?
+    ''', (cutoff,))
+    deleted = cur.rowcount
+    con.commit()
+    con.close()
+    return deleted
+
+def get_archived_tasks(limit=100, offset=0, search=''):
+    con = get_con()
+    cur = con.cursor()
+    if search:
+        cur.execute('''
+            SELECT t.*, p.name as project_name, p.color as project_color
+            FROM tasks t LEFT JOIN projects p ON t.project_id=p.id
+            WHERE t.archived=1 AND t.name LIKE ?
+            ORDER BY t.done_at DESC LIMIT ? OFFSET ?
+        ''', (f'%{search}%', limit, offset))
+    else:
+        cur.execute('''
+            SELECT t.*, p.name as project_name, p.color as project_color
+            FROM tasks t LEFT JOIN projects p ON t.project_id=p.id
+            WHERE t.archived=1
+            ORDER BY t.done_at DESC LIMIT ? OFFSET ?
+        ''', (limit, offset))
+    rows = [dict(r) for r in cur.fetchall()]
+    con.close()
+    return rows
+
+def search_tasks(query: str, include_done=True, include_archived=False):
+    con = get_con()
+    cur = con.cursor()
+    conditions = ["t.name LIKE ?"]
+    params = [f'%{query}%']
+    if not include_done:
+        conditions.append("t.done=0")
+    if not include_archived:
+        conditions.append("t.archived=0")
+    where = ' AND '.join(conditions)
+    cur.execute(f'''
+        SELECT t.*, p.name as project_name, p.color as project_color
+        FROM tasks t LEFT JOIN projects p ON t.project_id=p.id
+        WHERE {where}
+        ORDER BY t.done ASC, t.created_at DESC LIMIT 50
+    ''', params)
+    rows = [dict(r) for r in cur.fetchall()]
+    con.close()
+    return rows
 
 # ── ムードトラッカー ──────────────────────────────
 def save_mood(score: int, note: str = None) -> int:

@@ -279,15 +279,20 @@ def update_task(task_id: int, body: TaskUpdate):
     nullable = {'importance', 'urgency'}
     data = {}
     for k, v in body.dict().items():
-        if k in nullable:
-            # 空文字列はNULLとして扱う（未設定に戻す）
+        if k == 'archived':
+            # archivedは0/1の整数として明示的に処理
+            if v is not None:
+                data[k] = int(v)
+        elif k in nullable:
             data[k] = None if v == '' else v
         elif v is not None:
             data[k] = v
     if not data:
         raise HTTPException(400, "更新データがありません")
+    import logging
+    logging.warning(f"update_task {task_id}: {data}")
     db.db_update('tasks', data, {'id': task_id})
-    return {"message": "更新しました"}
+    return {"message": "更新しました", "data": data}
 
 @app.post("/api/tasks/{task_id}/done")
 def toggle_done(task_id: int):
@@ -386,7 +391,7 @@ def get_kanban_tasks():
         SELECT t.*, p.name as project_name, p.color as project_color
         FROM tasks t
         LEFT JOIN projects p ON t.project_id = p.id
-        WHERE t.parent_id IS NULL
+        WHERE t.parent_id IS NULL AND t.archived=0
         ORDER BY t.created_at ASC
     """)
     tasks = [dict(r) for r in cur.fetchall()]
@@ -543,6 +548,36 @@ def get_held_sessions():
 def remove_held_session(session_id: int):
     _held_sessions.pop(session_id, None)
     return {"message": "削除しました"}
+
+# ═══════════════════════════════════════════════════
+# アーカイブ・検索 API
+# ═══════════════════════════════════════════════════
+
+@app.post("/api/tasks/archive/run")
+def run_archive():
+    archived = db.run_auto_archive()
+    deleted  = db.run_auto_delete()
+    return {"archived": archived, "deleted": deleted}
+
+@app.get("/api/tasks/archived")
+def get_archived(limit: int = 100, offset: int = 0, search: str = ''):
+    return db.get_archived_tasks(limit=limit, offset=offset, search=search)
+
+@app.delete("/api/tasks/archived/{task_id}")
+def delete_archived(task_id: int):
+    db.db_delete('tasks', {'id': task_id})
+    return {"message": "削除しました"}
+
+@app.post("/api/tasks/archived/{task_id}/restore")
+def restore_archived(task_id: int):
+    db.db_update('tasks', {'archived': 0, 'done': 0, 'done_at': None}, {'id': task_id})
+    return {"message": "復元しました"}
+
+@app.get("/api/tasks/search")
+def search_tasks(q: str = '', include_done: int = 1, include_archived: int = 0):
+    if not q:
+        return []
+    return db.search_tasks(q, bool(include_done), bool(include_archived))
 
 # ═══════════════════════════════════════════════════
 # ムード API

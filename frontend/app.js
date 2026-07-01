@@ -667,6 +667,23 @@ function buildProjectCard(project, tasks, isOpen = false) {
       const isDone = check.classList.toggle('done');
       const nameEl = check.closest('.task-item, .subtask-item')?.querySelector('.task-name');
       if (nameEl) nameEl.classList.toggle('done', isDone);
+      // 完了時にアーカイブボタンを動的に追加/削除
+      const taskItem = check.closest('.task-item, .subtask-item');
+      if (taskItem) {
+        const existingArc = taskItem.querySelector('[data-action="archive-task"]');
+        if (isDone && !existingArc) {
+          const arcBtn = document.createElement('button');
+          arcBtn.className = 'task-btn';
+          arcBtn.dataset.action = 'archive-task';
+          arcBtn.dataset.tid = tid;
+          arcBtn.title = 'アーカイブ';
+          arcBtn.textContent = '↯';
+          const delBtn = taskItem.querySelector('[data-action="del-task"]');
+          if (delBtn) delBtn.before(arcBtn);
+        } else if (!isDone && existingArc) {
+          existingArc.remove();
+        }
+      }
       // カウンターも更新
       const doneNow = el.querySelectorAll('.task-check.done').length;
       const total   = el.querySelectorAll('.task-check').length;
@@ -688,6 +705,18 @@ function buildProjectCard(project, tasks, isOpen = false) {
     }
     if (action === 'add-sub') {
       openTaskModal(parseInt(btn.dataset.pid), tid);
+    }
+    if (action === 'archive-task') {
+      await api('PUT', `/api/tasks/${tid}`, { archived: 1 });
+      showToast('アーカイブしました');
+      const openIds2 = new Set();
+      document.querySelectorAll('.project-card.open').forEach(c => openIds2.add(c.dataset.id));
+      const tasks2 = await api('GET', `/api/tasks?project_id=${project.id}`);
+      const newCard2 = buildProjectCard(project, tasks2, openIds2.has(String(project.id)));
+      el.replaceWith(newCard2);
+      loadArchiveTab();
+      if (document.getElementById('tab-kanban').classList.contains('active')) loadKanbanTab();
+      return;
     }
     if (action === 'del-task') {
       const ok = await showConfirm('タスクを削除', 'このタスクを削除しますか？\nサブタスクも削除されます。');
@@ -740,9 +769,10 @@ function buildTaskHTML(task) {
         <button class="task-btn" data-action="start-task"   data-tid="${task.id}" data-name="${task.name}">▶</button>
         <button class="task-btn" data-action="detail-task"  data-tid="${task.id}">…</button>
         <button class="task-btn" data-action="add-sub"      data-tid="${task.id}" data-pid="${task.project_id}">+</button>
+        ${task.done ? `<button class="task-btn" data-action="archive-task" data-tid="${task.id}" title="アーカイブ">↯</button>` : ''}
         <button class="task-btn" data-action="del-task"     data-tid="${task.id}">✕</button>
       </div>
-      ${task.assignee ? `<span class="task-assignee">👤 ${task.assignee}</span>` : ''}
+      ${task.assignee ? `<span class="task-assignee">𓀠 ${task.assignee}</span>` : ''}
     </div>
     ${subs}
   `;
@@ -1695,4 +1725,104 @@ document.getElementById('journalSaveBtn')?.addEventListener('click', async () =>
   document.getElementById('journalModal').style.display = 'none';
   showToast('保存しました');
   loadJournalTab();
+});
+
+// ════════════════════════════════════════
+// タスク検索
+// ════════════════════════════════════════
+let _searchTimer = null;
+document.getElementById('taskSearchInput')?.addEventListener('input', e => {
+  clearTimeout(_searchTimer);
+  const q = e.target.value.trim();
+  const results = document.getElementById('taskSearchResults');
+  if (!q) { results.style.display = 'none'; results.innerHTML = ''; return; }
+  _searchTimer = setTimeout(async () => {
+    const includeDone = document.getElementById('searchIncludeDone').checked ? 1 : 0;
+    const tasks = await api('GET', `/api/tasks/search?q=${encodeURIComponent(q)}&include_done=${includeDone}`).catch(() => []);
+    if (!tasks.length) {
+      results.innerHTML = '<div class="empty-state" style="padding:16px">見つかりませんでした</div>';
+      results.style.display = 'block';
+      return;
+    }
+    results.innerHTML = tasks.map(t => `
+      <div class="search-result-item" data-tid="${t.id}">
+        <div class="search-result-name ${t.done ? 'done-text' : ''}">${t.name}</div>
+        <div class="search-result-meta">
+          ${t.project_name ? `<span style="color:${t.project_color||'var(--muted)'}">${t.project_name}</span>` : ''}
+          <span class="status-badge">${t.status || '未着手'}</span>
+          ${t.done ? '<span style="color:var(--ink2)">✓ 完了</span>' : ''}
+        </div>
+      </div>
+    `).join('');
+    results.style.display = 'block';
+    results.querySelectorAll('.search-result-item').forEach(el => {
+      el.addEventListener('click', () => {
+        openTaskDetail(parseInt(el.dataset.tid));
+      });
+    });
+  }, 300);
+});
+
+document.getElementById('searchIncludeDone')?.addEventListener('change', () => {
+  document.getElementById('taskSearchInput').dispatchEvent(new Event('input'));
+});
+
+// ════════════════════════════════════════
+// アーカイブ
+// ════════════════════════════════════════
+async function loadArchiveTab(search = '') {
+  const list = document.getElementById('archiveList');
+  list.innerHTML = '<div style="padding:20px;color:var(--muted)">読み込み中...</div>';
+  const url = search ? `/api/tasks/archived?search=${encodeURIComponent(search)}` : '/api/tasks/archived';
+  const tasks = await api('GET', url).catch(() => []);
+  if (!tasks.length) {
+    list.innerHTML = '<div class="empty-state" style="padding:40px">アーカイブされたタスクはありません</div>';
+    return;
+  }
+  list.innerHTML = tasks.map(t => `
+    <div class="archive-item">
+      <div class="archive-item-info">
+        <div class="archive-item-name">${t.name}</div>
+        <div class="archive-item-meta">
+          ${t.project_name ? `<span style="color:${t.project_color||'var(--muted)'}">${t.project_name}</span>` : ''}
+          <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted)">${t.done_at ? t.done_at.slice(0,10) : ''}</span>
+        </div>
+      </div>
+      <div class="archive-item-actions">
+        <button class="btn btn-ghost" style="font-size:12px" data-restore="${t.id}">↩ 復元</button>
+        <button class="btn btn-ghost" style="font-size:12px;color:var(--danger)" data-delete-arc="${t.id}">削除</button>
+      </div>
+    </div>
+  `).join('');
+
+  list.querySelectorAll('[data-restore]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      await api('POST', `/api/tasks/archived/${btn.dataset.restore}/restore`);
+      showToast('復元しました');
+      loadArchiveTab(document.getElementById('archiveSearchInput').value);
+    });
+  });
+  list.querySelectorAll('[data-delete-arc]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const ok = await showConfirm('完全削除', 'このタスクを完全に削除しますか？元に戻せません。');
+      if (!ok) return;
+      await api('DELETE', `/api/tasks/archived/${btn.dataset.deleteArc}`);
+      showToast('削除しました');
+      loadArchiveTab(document.getElementById('archiveSearchInput').value);
+    });
+  });
+}
+
+// アーカイブ検索
+let _archiveTimer = null;
+document.getElementById('archiveSearchInput')?.addEventListener('input', e => {
+  clearTimeout(_archiveTimer);
+  _archiveTimer = setTimeout(() => loadArchiveTab(e.target.value.trim()), 300);
+});
+
+// アーカイブ実行ボタン
+document.getElementById('runArchiveBtn')?.addEventListener('click', async () => {
+  const res = await api('POST', '/api/tasks/archive/run');
+  showToast(`アーカイブ: ${res.archived}件 / 削除: ${res.deleted}件`);
+  loadArchiveTab();
 });
