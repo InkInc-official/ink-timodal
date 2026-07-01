@@ -578,7 +578,7 @@ textarea   { resize: vertical; }
 /* ────────── カラーピック ────────── */
 .color-row  { display: flex; align-items: center; gap: 12px; }
 .color-row label { font-size: 12px; color: var(--muted); }
-.color-picks { display: flex; gap: 6px; }
+.color-picks { display: flex; gap: 6px; flex-wrap: wrap; max-width: 280px; }
 .color-pick {
   width: 22px; height: 22px; border-radius: 50%;
   cursor: pointer; border: 2px solid transparent;
@@ -1101,3 +1101,28 @@ textarea   { resize: vertical; }
   .moon-icon     { width: 36px; height: 36px; }
   .modal-journal { width: 100%; }
 }
+
+/* 保留・完了ボタン */
+.btn-hold {
+  background: rgba(255,170,0,.15);
+  color: #ffaa00;
+  border: 1px solid rgba(255,170,0,.3);
+  padding: 6px 12px;
+  border-radius: var(--radius);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-hold:hover { background: rgba(255,170,0,.25); }
+
+.btn-done-stop {
+  background: rgba(0,200,100,.15);
+  color: #00c864;
+  border: 1px solid rgba(0,200,100,.3);
+  padding: 6px 12px;
+  border-radius: var(--radius);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-done-stop:hover { background: rgba(0,200,100,.25); }

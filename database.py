@@ -356,7 +356,9 @@ def create_task(
     note: str = None,
     description: str = None,
     assignee: str = None,
-    status: str = None
+    status: str = None,
+    importance: str = None,
+    urgency: str = None,
 ) -> int:
     name = normalize_task_name(name)
     if not category:
@@ -373,6 +375,8 @@ def create_task(
         'description':   description,
         'assignee':      assignee,
         'status':        status or '未着手',
+        'importance':    importance,
+        'urgency':       urgency,
         'done':          0,
         'created_at':    datetime.datetime.now().isoformat(),
     })
@@ -451,8 +455,8 @@ def stop_session(session_id: int) -> int:
     con.close()
     if not row:
         return None
-    started      = datetime.datetime.fromisoformat(row['started_at'])
-    ended        = datetime.datetime.fromisoformat(now)
+    started      = datetime.datetime.fromisoformat(row['started_at']).replace(tzinfo=None)
+    ended        = datetime.datetime.fromisoformat(now).replace(tzinfo=None)
     duration_sec = max(0, int((ended - started).total_seconds()))
     db_update('sessions', {
         'ended_at':     now,
@@ -519,6 +523,9 @@ def cleanup_orphan_sessions():
     for row in rows:
         started  = datetime.datetime.fromisoformat(row['started_at'])
         ended    = datetime.datetime.fromisoformat(now)
+        # タイムゾーン情報を除去して比較
+        if started.tzinfo: started = started.replace(tzinfo=None)
+        if ended.tzinfo:   ended   = ended.replace(tzinfo=None)
         duration = max(0, int((ended - started).total_seconds()))
         cur.execute(
             'UPDATE sessions SET ended_at=?, duration_sec=? WHERE id=?',

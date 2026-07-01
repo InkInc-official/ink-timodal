@@ -269,6 +269,8 @@ def create_task(body: TaskCreate):
         description=body.description,
         assignee=body.assignee,
         status=body.status,
+        importance=body.importance,
+        urgency=body.urgency,
     )
     return {"id": task_id, "message": "作成しました"}
 
@@ -294,14 +296,18 @@ def toggle_done(task_id: int):
 
 @app.post("/api/tasks/{task_id}/status")
 def update_status(task_id: int, body: dict):
-    status = body.get('status', 'todo')
-    if status not in ('todo', 'in_progress', 'on_hold', 'done'):
-        raise HTTPException(400, "無効なステータスです")
-    done = 1 if status == 'done' else 0
-    db.db_update('tasks', {'status': status, 'done': done}, {'id': task_id})
+    import datetime as _dt
+    status = body.get('status', '')
+    if not status:
+        raise HTTPException(400, "ステータスを指定してください")
+    done_keywords = ('done', '完了', 'finished', 'completed')
+    done = 1 if status.lower() in done_keywords else 0
+    update_data = {'status': status, 'done': done}
     if done:
-        import datetime as _dt
-        db.db_update('tasks', {'done_at': _dt.datetime.now().isoformat()}, {'id': task_id})
+        update_data['done_at'] = _dt.datetime.now().isoformat()
+    else:
+        update_data['done_at'] = None
+    db.db_update('tasks', update_data, {'id': task_id})
     return {"status": status}
 
 @app.delete("/api/tasks/{task_id}")
@@ -406,7 +412,9 @@ def list_sessions(
 
 @app.get("/api/sessions/active")
 def list_active():
-    return db.get_active_sessions()
+    sessions = db.get_active_sessions()
+    held_ids = set(_held_sessions.keys())
+    return [s for s in sessions if s['id'] not in held_ids]
 
 @app.get("/api/sessions/suggestions")
 def get_suggestions():
@@ -428,6 +436,7 @@ def start_session(body: SessionStart):
     _schedule_reminder(session_id)
     return {
         "session_id": session_id,
+        "task_id":    body.task_id,
         "category":   category,
         "started_at": started_at,
     }
@@ -505,6 +514,35 @@ def today_report():
 def weekly_report():
     return db.get_weekly_summary()
 
+
+# ═══════════════════════════════════════════════════
+# 保留中セッション API
+# ═══════════════════════════════════════════════════
+
+_held_sessions = {}  # { session_id: { name, task_id, duration_sec } }
+
+@app.post("/api/sessions/hold")
+def hold_session(body: dict):
+    session_id   = body.get('session_id')
+    name         = body.get('name', '')
+    task_id      = body.get('task_id')
+    duration_sec = body.get('duration_sec', 0)
+    _held_sessions[session_id] = {
+        'session_id':  session_id,
+        'name':        name,
+        'task_id':     task_id,
+        'duration_sec': duration_sec,
+    }
+    return {"message": "保留しました"}
+
+@app.get("/api/sessions/held")
+def get_held_sessions():
+    return list(_held_sessions.values())
+
+@app.delete("/api/sessions/held/{session_id}")
+def remove_held_session(session_id: int):
+    _held_sessions.pop(session_id, None)
+    return {"message": "削除しました"}
 
 # ═══════════════════════════════════════════════════
 # ムード API

@@ -113,6 +113,7 @@ function startElapsedTimer(sessionId, startedAt, elId) {
 async function refreshActiveSessions() {
   try {
     const sessions = await api('GET', '/api/sessions/active');
+    await renderHeldSessions();
     const ind = document.getElementById('activeIndicator');
     if (sessions.length > 0) {
       ind.style.display = 'flex';
@@ -140,8 +141,18 @@ refreshActiveSessions();
 function renderActiveSectionInToday(sessions) {
   const block = document.getElementById('activeSectionBlock');
   const list  = document.getElementById('activeSectionList');
-  if (!sessions.length) { block.style.display = 'none'; return; }
+  // 保留中のセッションを除外
+  const heldBlock = document.getElementById('heldSectionBlock');
+  const heldList  = document.getElementById('heldSectionList');
+  const heldIds   = new Set(
+    Array.from(heldList ? heldList.querySelectorAll('[data-resume-sid]') : [])
+      .map(el => parseInt(el.dataset.resumeSid))
+  );
+  const activeSessions = sessions.filter(s => !heldIds.has(s.id));
+  if (!activeSessions.length) { block.style.display = 'none'; list.innerHTML = ''; return; }
   block.style.display = 'block';
+  const filteredSessions = activeSessions;
+  sessions = filteredSessions;
   list.innerHTML = sessions.map(s => `
     <div class="active-card" id="acard-${s.id}">
       <div class="pulse-dot"></div>
@@ -153,19 +164,145 @@ function renderActiveSectionInToday(sessions) {
         </div>
       </div>
       <button class="task-btn task-focus-btn" style="margin-right:4px" onclick="openFocusMode('${s.name}')" title="フォーカスモード">⊙</button>
-      <button class="btn btn-stop" data-stop-sid="${s.id}">■ 停止</button>
+      <button class="btn btn-hold" data-hold-sid="${s.id}" data-task-id="${s.task_id || ''}">⏸ 保留</button>
+      <button class="btn btn-done-stop" data-done-sid="${s.id}" data-task-id="${s.task_id || ''}">✓ 完了</button>
     </div>
   `).join('');
   sessions.forEach(s => startElapsedTimer(s.id, s.started_at, `aelapsed-${s.id}`));
-  list.querySelectorAll('[data-stop-sid]').forEach(btn => {
+  // 保留ボタン：セッションを停止して経過時間を保存
+  list.querySelectorAll('[data-hold-sid]').forEach(btn => {
     btn.addEventListener('click', async () => {
-      const sid = parseInt(btn.dataset.stopSid);
-      const res = await api('POST', '/api/sessions/stop', { session_id: sid });
-      showToast(`停止しました（${fmtSec(res.duration_sec)}）`);
+      const sid    = parseInt(btn.dataset.holdSid);
+      const taskId = btn.dataset.taskId ? parseInt(btn.dataset.taskId) : null;
+      const card   = btn.closest('.active-card');
+      const nameEl = card?.querySelector('.active-name');
+      const name   = nameEl ? nameEl.textContent.trim() : '';
+      // タイマーを止めてカードを即座に非表示
       clearInterval(elapsedTimers[`aelapsed-${sid}`]);
       delete elapsedTimers[`aelapsed-${sid}`];
+      if (card) card.style.display = 'none';
+      // セッションを停止して経過時間を取得
+      const res = await api('POST', '/api/sessions/stop', { session_id: sid });
+      const elapsedSec = res.duration_sec || 0;
+      // 保留状態をサーバーに保存
+      await api('POST', '/api/sessions/hold', {
+        session_id: sid, name, task_id: taskId, duration_sec: elapsedSec
+      });
+      // カンバンの「保留中」に自動移動
+      if (taskId) {
+        try {
+          const cols = await api('GET', '/api/kanban/columns');
+          const onHold = cols.find(c => ['保留中','保留','On Hold'].includes(c.name));
+          if (onHold) await api('POST', `/api/tasks/${taskId}/status`, { status: onHold.name });
+        } catch(_) {}
+      }
+      showToast(`⏸ 「${name}」を保留しました（${fmtSec(elapsedSec)}）`);
+      await renderHeldSessions();
+      if (document.getElementById('tab-kanban').classList.contains('active')) loadKanbanTab();
+    });
+  });
+
+  // 完了ボタン
+  list.querySelectorAll('[data-done-sid]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const sid    = parseInt(btn.dataset.doneSid);
+      const taskId = btn.dataset.taskId ? parseInt(btn.dataset.taskId) : null;
+      const res = await api('POST', '/api/sessions/stop', { session_id: sid });
+      showToast(`✓ 完了しました（${fmtSec(res.duration_sec)}）`);
+      clearInterval(elapsedTimers[`aelapsed-${sid}`]);
+      delete elapsedTimers[`aelapsed-${sid}`];
+      // カンバンの「完了」に自動移動
+      if (taskId) {
+        try {
+          const cols = await api('GET', '/api/kanban/columns');
+          const done = cols.find(c => ['完了','Done','Completed'].includes(c.name));
+          if (done) await api('POST', `/api/tasks/${taskId}/status`, { status: done.name });
+          // タスクを完了済みにする
+          await api('POST', `/api/tasks/${taskId}/done`);
+        } catch(_) {}
+      }
       refreshActiveSessions();
       loadTodayTab();
+      if (document.getElementById('tab-kanban').classList.contains('active')) loadKanbanTab();
+    });
+  });
+}
+
+// ── 保留中セッションの表示 ───────────────────────────
+async function renderHeldSessions() {
+  const block = document.getElementById('heldSectionBlock');
+  const list  = document.getElementById('heldSectionList');
+  if (!block || !list) return;
+  // APIから保留中セッションを取得
+  const held = await api('GET', '/api/sessions/held').catch(() => []);
+  list.innerHTML = '';
+  if (!held.length) {
+    block.style.display = 'none';
+    return;
+  }
+  block.style.display = 'block';
+  held.forEach(s => {
+    const div = document.createElement('div');
+    div.className = 'active-card held-card';
+    div.id = `hcard-${s.session_id}`;
+    div.style.borderColor = '#ffaa00';
+    div.innerHTML = `
+      <div class="pulse-dot" style="background:#ffaa00;animation:none"></div>
+      <div class="active-info">
+        <div class="active-name">${s.name}</div>
+        <div><span style="color:#ffaa00;font-size:12px">⏸ 保留中 ${fmtSec(s.duration_sec || 0)}</span></div>
+      </div>
+      <button class="btn btn-primary" style="font-size:12px" data-resume-name="${s.name}" data-resume-task="${s.task_id || ''}" data-resume-sid="${s.session_id}" data-resume-elapsed="${s.duration_sec || 0}">▶ 再開</button>
+      <button class="btn btn-done-stop" style="font-size:12px" data-held-done-sid="${s.session_id}" data-resume-task="${s.task_id || ''}">✓ 完了</button>
+    `;
+    list.appendChild(div);
+
+    // 再開ボタン：新しいセッションを開始して保留前の経過時間から継続
+    div.querySelector('[data-resume-sid]').addEventListener('click', async () => {
+      const resumeBtn  = div.querySelector('[data-resume-sid]');
+      const name       = resumeBtn.dataset.resumeName;
+      const taskId     = resumeBtn.dataset.resumeTask || null;
+      const elapsedSec = parseInt(resumeBtn.dataset.resumeElapsed || '0');
+      await api('DELETE', `/api/sessions/held/${s.session_id}`);
+      div.remove();
+      // 新しいセッションを開始（保留前の経過時間を引き継ぐため開始時刻を調整）
+      const fakeStart = new Date(Date.now() - elapsedSec * 1000).toISOString();
+      const newRes = await api('POST', '/api/sessions/start', {
+        name, task_id: taskId ? parseInt(taskId) : null
+      });
+      // started_atを調整して経過時間を引き継ぐ
+      if (newRes && newRes.session_id) {
+        await api('PUT', `/api/sessions/${newRes.session_id}`, { started_at: fakeStart }).catch(() => {});
+      }
+      if (taskId) {
+        try {
+          const cols = await api('GET', '/api/kanban/columns');
+          const inP = cols.find(c => ['実行中','進行中'].includes(c.name));
+          if (inP) await api('POST', `/api/tasks/${parseInt(taskId)}/status`, { status: inP.name });
+        } catch(_) {}
+      }
+      showToast(`▶ 「${name}」を再開しました`);
+      await refreshActiveSessions();
+      if (document.getElementById('tab-kanban').classList.contains('active')) loadKanbanTab();
+    });
+
+    // 保留から完了ボタン
+    div.querySelector('[data-held-done-sid]').addEventListener('click', async () => {
+      const taskId = div.querySelector('[data-resume-task]').dataset.resumeTask || null;
+      await api('DELETE', `/api/sessions/held/${s.session_id}`);
+      div.remove();
+      if (taskId) {
+        try {
+          const cols = await api('GET', '/api/kanban/columns');
+          const done = cols.find(c => ['完了','Done'].includes(c.name));
+          if (done) await api('POST', `/api/tasks/${parseInt(taskId)}/status`, { status: done.name });
+          await api('POST', `/api/tasks/${parseInt(taskId)}/done`);
+        } catch(_) {}
+      }
+      showToast('✓ 完了しました');
+      await refreshActiveSessions();
+      loadTodayTab();
+      if (document.getElementById('tab-kanban').classList.contains('active')) loadKanbanTab();
     });
   });
 }
@@ -246,6 +383,7 @@ async function loadTodayTab() {
       });
     });
   } catch (e) { showToast('今日のデータ取得に失敗: ' + e.message); }
+  await renderHeldSessions();
 }
 loadTodayTab();
 
@@ -255,7 +393,15 @@ document.getElementById('quickStartBtn').addEventListener('click', async () => {
   const estMin = parseInt(document.getElementById('quickEstMin').value) || null;
   if (!name) { showToast('タスク名を入力してください'); return; }
   try {
-    await api('POST', '/api/sessions/start', { name, estimated_sec: estMin ? estMin * 60 : null });
+    const qres = await api('POST', '/api/sessions/start', { name, estimated_sec: estMin ? estMin * 60 : null });
+    // カンバンの「実行中」に自動移動
+    if (qres && qres.task_id) {
+      try {
+        const cols = await api('GET', '/api/kanban/columns');
+        const inProgress = cols.find(c => ['実行中','進行中','In Progress'].includes(c.name));
+        if (inProgress) await api('POST', `/api/tasks/${qres.task_id}/status`, { status: inProgress.name });
+      } catch(_) {}
+    }
     document.getElementById('quickTaskInput').value = '';
     document.getElementById('quickEstMin').value    = '';
     showToast(`「${name}」を開始しました`);
@@ -377,7 +523,7 @@ document.getElementById('pastSaveBtn').addEventListener('click', async () => {
 });
 
 // ── タスクタブ ────────────────────────────────────
-const PROJECT_COLORS = ['#7c6aff','#ff6a9b','#6affcc','#ffb86a','#ff5f57','#5fb3ff'];
+const PROJECT_COLORS = ['#7c6aff','#9b6aff','#ff6a9b','#ff6adb','#ff5f57','#ff8c42','#ffb86a','#ffd700','#6affcc','#6aff9b','#5fb3ff','#6ae8ff','#6b6b80','#a0a0b0','#ffffff'];
 
 async function loadTasksTab() {
   try {
@@ -437,7 +583,8 @@ function buildProjectCard(project, tasks, isOpen = false) {
     </div>
     <div class="project-footer">
       <button class="btn btn-ghost" style="font-size:12px" data-action="add-task"    data-pid="${project.id}">＋ タスク追加</button>
-      <button class="btn btn-ghost" style="font-size:12px" data-action="del-project" data-pid="${project.id}">削除</button>
+      <button class="btn btn-ghost" style="font-size:12px" data-action="edit-project" data-pid="${project.id}">編集</button>
+      <button class="btn btn-ghost" style="font-size:12px" data-action="del-project"  data-pid="${project.id}">削除</button>
     </div>
   `;
 
@@ -458,6 +605,10 @@ function buildProjectCard(project, tasks, isOpen = false) {
   });
 
   // プロジェクト削除
+  el.querySelector('[data-action="edit-project"]').addEventListener('click', e => {
+    e.stopPropagation();
+    openProjectModal(project);
+  });
   el.querySelector('[data-action="del-project"]').addEventListener('click', async e => {
     e.stopPropagation();
     if (project.id === '__inbox__') {
@@ -524,9 +675,16 @@ function buildProjectCard(project, tasks, isOpen = false) {
     if (action === 'start-task') {
       const name = btn.dataset.name;
       await api('POST', '/api/sessions/start', { name, task_id: tid });
+      // カンバンを「実行中」に自動変更
+      try {
+        const cols = await api('GET', '/api/kanban/columns');
+        const inProgress = cols.find(c => c.name === '実行中' || c.name === '進行中' || c.name === 'In Progress');
+        if (inProgress) await api('POST', `/api/tasks/${tid}/status`, { status: inProgress.name });
+      } catch(_) {}
       showToast(`「${name}」を開始しました`);
       refreshActiveSessions();
       loadTodayTab();
+      if (document.getElementById('tab-kanban').classList.contains('active')) loadKanbanTab();
     }
     if (action === 'add-sub') {
       openTaskModal(parseInt(btn.dataset.pid), tid);
@@ -549,8 +707,7 @@ function buildProjectCard(project, tasks, isOpen = false) {
 }
 
 function buildTaskHTML(task) {
-  const pc = { high: 'priority-high', medium: 'priority-medium', low: 'priority-low' }[task.priority] || 'priority-medium';
-  const pl = { high: '高', medium: '中', low: '低' }[task.priority] || '中';
+
   const subs = (task.subtasks || []).map(s => `
     <div class="subtask-item">
       <div class="task-check ${s.done ? 'done' : ''}" data-action="toggle" data-tid="${s.id}"></div>
@@ -576,7 +733,7 @@ function buildTaskHTML(task) {
       <span class="task-name ${task.done ? 'done' : ''}">${task.name}</span>
       <span class="status-badge ${statusClass}" data-action="cycle-status" data-tid="${task.id}" data-status="${status}">${statusLabel}</span>
       ${matrixInfo ? `<span class="matrix-mini-badge ${matrixInfo.cls}">${matrixInfo.label}</span>` : ''}
-      <span class="task-priority ${pc}">${pl}</span>
+
       ${task.estimated_min ? `<span class="session-cat">${task.estimated_min}分</span>` : ''}
       <div class="task-actions">
         <button class="task-btn task-focus-btn" data-action="focus-task" data-tid="${task.id}" data-name="${task.name}" title="フォーカスモード">⊙</button>
@@ -623,7 +780,7 @@ async function openTaskDetail(taskId) {
   document.getElementById('detailDueDate').value            = task.due_date    || '';
   document.getElementById('detailEstMin').value             = task.estimated_min || '';
   document.getElementById('detailCategory').value           = task.category    || 'その他';
-  document.getElementById('detailPriority').value           = task.priority    || 'medium';
+  // 優先度は非表示
   document.getElementById('detailImportance').value         = task.importance  || 'low';
   document.getElementById('detailUrgency').value            = task.urgency     || 'low';
   document.getElementById('taskDetailModal').style.display  = 'flex';
@@ -657,12 +814,15 @@ document.getElementById('detailSaveBtn').addEventListener('click', async () => {
 });
 
 // プロジェクト作成モーダル
-document.getElementById('newProjectBtn').addEventListener('click', () => {
-  document.getElementById('projectName').value = '';
-  document.getElementById('projectDesc').value = '';
+function openProjectModal(project = null) {
+  document.getElementById('projectName').value = project ? project.name : '';
+  document.getElementById('projectDesc').value = project ? (project.description || '') : '';
+  document.getElementById('projectModal').dataset.editId = project ? project.id : '';
+  document.querySelector('#projectModal .modal-title').textContent = project ? 'プロジェクトを編集' : 'プロジェクトを作成';
+  document.getElementById('projectSaveBtn').textContent = project ? '更新' : '作成';
   const picks = document.getElementById('colorPicks');
-  picks.innerHTML = PROJECT_COLORS.map((c, i) =>
-    `<div class="color-pick ${i===0?'selected':''}" data-color="${c}" style="background:${c}"></div>`
+  picks.innerHTML = PROJECT_COLORS.map((c) =>
+    `<div class="color-pick ${project ? c===project.color : c===PROJECT_COLORS[0] ? 'selected' : ''}" data-color="${c}" style="background:${c}"></div>`
   ).join('');
   picks.querySelectorAll('.color-pick').forEach(p => {
     p.addEventListener('click', () => {
@@ -671,7 +831,9 @@ document.getElementById('newProjectBtn').addEventListener('click', () => {
     });
   });
   document.getElementById('projectModal').style.display = 'flex';
-});
+  setTimeout(() => document.getElementById('projectName').focus(), 100);
+}
+document.getElementById('newProjectBtn').addEventListener('click', () => openProjectModal());
 document.getElementById('projectCancelBtn').addEventListener('click', () => {
   document.getElementById('projectModal').style.display = 'none';
 });
@@ -679,14 +841,20 @@ document.getElementById('projectSaveBtn').addEventListener('click', async () => 
   const btn = document.getElementById('projectSaveBtn');
   if (btn.disabled) return;
   btn.disabled = true;
-  const name  = document.getElementById('projectName').value.trim();
-  const desc  = document.getElementById('projectDesc').value.trim();
-  const color = document.querySelector('#colorPicks .color-pick.selected')?.dataset.color || '#7c6aff';
+  const name   = document.getElementById('projectName').value.trim();
+  const desc   = document.getElementById('projectDesc').value.trim();
+  const color  = document.querySelector('#colorPicks .color-pick.selected')?.dataset.color || '#7c6aff';
+  const editId = document.getElementById('projectModal').dataset.editId;
   if (!name) { showToast('プロジェクト名を入力してください'); btn.disabled = false; return; }
-  await api('POST', '/api/projects', { name, description: desc, color });
+  if (editId) {
+    await api('PUT', `/api/projects/${editId}`, { name, description: desc, color });
+    showToast('更新しました');
+  } else {
+    await api('POST', '/api/projects', { name, description: desc, color });
+    showToast('プロジェクトを作成しました');
+  }
   document.getElementById('projectModal').style.display = 'none';
   btn.disabled = false;
-  showToast('プロジェクトを作成しました');
   loadTasksTab();
 });
 
@@ -869,7 +1037,7 @@ function renderAIPreview(result) {
   for (const t of (result.tasks || [])) {
     html += `<div class="ai-task-row">
       <div class="ai-task-name">▸ ${t.name}</div>
-      <div class="ai-task-meta">${t.category||'その他'} / ${t.priority||'medium'} / ${t.estimated_min ? t.estimated_min+'分' : '未設定'}</div>
+      <div class="ai-task-meta">${t.category||'その他'} / ${t.estimated_min ? t.estimated_min+'分' : '未設定'}</div>
       ${(t.subtasks||[]).map(s=>`<div class="ai-sub-row">　└ ${s.name} ${s.estimated_min?'('+s.estimated_min+'分)':''}</div>`).join('')}
     </div>`;
   }
@@ -1151,13 +1319,14 @@ document.getElementById('matrixRefreshBtn')?.addEventListener('click', loadMatri
 // ════════════════════════════════════════
 const KANBAN_COLORS = ['#7c6aff','#ff6a9b','#6affcc','#ffb86a','#ff5f57','#5fb3ff','#6b6b80'];
 let _kanbanDragTaskId   = null;
+// 保留中のセッション管理
+let _heldSessions = {};  // { sid: { id, name, task_id, held_at, duration_sec } }
 let _kanbanDragTaskName = '';
 
 function buildKanbanCard(task) {
   const today = new Date().toISOString().slice(0,10);
   const isOverdue = task.due_date && task.due_date < today && task.status !== '完了';
-  const pc = { high:'priority-high', medium:'priority-medium', low:'priority-low' }[task.priority] || 'priority-medium';
-  const pl = { high:'高', medium:'中', low:'低' }[task.priority] || '中';
+
 
   const div = document.createElement('div');
   div.className   = 'kanban-card';
@@ -1172,7 +1341,7 @@ function buildKanbanCard(task) {
     <div class="kanban-card-meta">
       ${task.project_name ? `<span class="kanban-card-project" style="color:${task.project_color||'var(--muted)'}">${task.project_name}</span>` : ''}
       ${task.due_date ? `<span class="kanban-card-due ${isOverdue?'overdue':''}">${task.due_date}${isOverdue?' ⚠':''}</span>` : ''}
-      <span class="kanban-card-priority ${pc}">${pl}</span>
+
     </div>
   `;
   div.addEventListener('dragstart', e => {
@@ -1258,10 +1427,40 @@ window.onKanbanDrop = async function(e, colName, colId) {
   e.preventDefault();
   document.getElementById(`kanbanBody-${colId}`)?.classList.remove('drag-over');
   if (!_kanbanDragTaskId) return;
-  const isDone = colName === '完了';
-  await api('POST', `/api/tasks/${_kanbanDragTaskId}/status`, { status: colName });
-  showToast(`「${_kanbanDragTaskName}」→ ${colName}`);
+  const taskId   = _kanbanDragTaskId;
+  const taskName = _kanbanDragTaskName;
+  await api('POST', `/api/tasks/${taskId}/status`, { status: colName });
+
+  // 「実行中」に移動→計測を自動開始
+  const inProgressNames = ['実行中','進行中','In Progress'];
+  const onHoldNames     = ['保留中','保留','On Hold'];
+  const doneNames       = ['完了','Done','Completed'];
+
+  if (inProgressNames.includes(colName)) {
+    // すでに計測中でなければ開始
+    const active = await api('GET', '/api/sessions/active').catch(() => []);
+    const already = active.find(s => s.task_id === taskId);
+    if (!already) {
+      await api('POST', '/api/sessions/start', { name: taskName, task_id: taskId }).catch(() => {});
+      showToast(`▶ 「${taskName}」の計測を開始しました`);
+    }
+  } else if (onHoldNames.includes(colName) || doneNames.includes(colName)) {
+    // 計測中なら停止
+    const active = await api('GET', '/api/sessions/active').catch(() => []);
+    const running = active.find(s => s.task_id === taskId);
+    if (running) {
+      await api('POST', '/api/sessions/stop', { session_id: running.id }).catch(() => {});
+      if (doneNames.includes(colName)) {
+        await api('POST', `/api/tasks/${taskId}/done`).catch(() => {});
+      }
+      showToast(`「${taskName}」→ ${colName}`);
+    }
+  }
+
+  showToast(`「${taskName}」→ ${colName}`);
   _kanbanDragTaskId = null;
+  refreshActiveSessions();
+  loadTodayTab();
   loadKanbanTab();
   if (document.getElementById('tab-tasks').classList.contains('active')) loadTasksTab();
 };

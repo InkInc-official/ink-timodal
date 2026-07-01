@@ -25,7 +25,7 @@
 <header class="header">
   <div class="header-left">
     <span class="logo"><span class="logo-ink">Ink</span> Timodal</span>
-    <span class="badge">v2.2</span>
+    <span class="badge">v2.1</span>
   </div>
   <div class="header-center">
     <span class="clock" id="clock">--:--:--</span>
@@ -183,6 +183,15 @@
           計測中
         </div>
         <div id="activeSectionList" class="active-sessions"></div>
+      </div>
+
+      <!-- 保留中 -->
+      <div class="section-block" id="heldSectionBlock" style="display:none">
+        <div class="section-title">
+          <span class="pulse-dot" style="background:#ffaa00;animation:none"></span>
+          保留中
+        </div>
+        <div id="heldSectionList" class="session-list"></div>
       </div>
 
       <!-- 本日の記録 -->
@@ -531,12 +540,8 @@
         <option value="休憩">休憩</option>
         <option value="その他">その他</option>
       </select>
-      <select id="taskPriority" class="select-sm">
-        <option value="high">優先度：高</option>
-        <option value="medium" selected>優先度：中</option>
-        <option value="low">優先度：低</option>
-      </select>
     </div>
+    <input type="hidden" id="taskPriority" value="medium">
     <div class="form-row">
       <input type="date"   id="taskDueDate" placeholder="期日（任意）">
       <input type="number" id="taskEstMin"  placeholder="見積(分)" min="1">
@@ -679,14 +684,7 @@
           <option value="その他">その他</option>
         </select>
       </div>
-      <div>
-        <label class="form-label">優先度</label>
-        <select id="detailPriority">
-          <option value="high">高</option>
-          <option value="medium">中</option>
-          <option value="low">低</option>
-        </select>
-      </div>
+<input type="hidden" id="detailPriority" value="medium">
       <div class="form-row">
         <div>
           <label class="form-label">重要度（マトリックス用）</label>
