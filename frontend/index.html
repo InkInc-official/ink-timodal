@@ -676,7 +676,7 @@
 <!-- タスク詳細パネル -->
 <div class="modal-overlay" id="taskDetailModal" style="display:none">
   <div class="modal">
-    <div class="modal-title" id="detailTaskName">タスク詳細</div>
+    <input type="text" id="detailTaskName" style="background:transparent;border:none;border-bottom:2px solid var(--ink1);width:100%;font-size:18px;font-weight:700;padding:6px 0;margin-bottom:12px;color:var(--text);outline:none;display:block" placeholder="タスク名">
     <div class="detail-grid">
       <div>
         <label class="form-label">説明・プロンプトメモ</label>
@@ -686,10 +686,7 @@
         <label class="form-label">担当者・対象ライバー</label>
         <input type="text" id="detailAssignee" placeholder="例：〇〇ライバー">
       </div>
-      <div>
-        <label class="form-label">メモ</label>
-        <textarea id="detailNote" rows="2" placeholder="メモ"></textarea>
-      </div>
+
       <div class="form-row">
         <div>
           <label class="form-label">期日</label>

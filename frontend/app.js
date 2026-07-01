@@ -803,10 +803,10 @@ async function openTaskDetail(taskId) {
   }
   if (!task) { showToast('タスクが見つかりません'); return; }
 
-  document.getElementById('detailTaskName').textContent     = task.name;
+  document.getElementById('detailTaskName').value           = task.name;
   document.getElementById('detailDescription').value        = task.description || '';
   document.getElementById('detailAssignee').value           = task.assignee    || '';
-  document.getElementById('detailNote').value               = task.note        || '';
+
   document.getElementById('detailDueDate').value            = task.due_date    || '';
   document.getElementById('detailEstMin').value             = task.estimated_min || '';
   document.getElementById('detailCategory').value           = task.category    || 'その他';
@@ -824,9 +824,9 @@ document.getElementById('detailCancelBtn').addEventListener('click', () => {
 document.getElementById('detailSaveBtn').addEventListener('click', async () => {
   if (!_detailTaskId) return;
   const body = {
+    name:          document.getElementById('detailTaskName').value.trim() || undefined,
     description:   document.getElementById('detailDescription').value || null,
     assignee:      document.getElementById('detailAssignee').value    || null,
-    note:          document.getElementById('detailNote').value        || null,
     due_date:      document.getElementById('detailDueDate').value     || null,
     estimated_min: parseInt(document.getElementById('detailEstMin').value) || null,
     category:      document.getElementById('detailCategory').value,
