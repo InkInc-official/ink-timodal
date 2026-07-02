@@ -106,7 +106,9 @@ function startElapsedTimer(sessionId, startedAt, elId) {
   elapsedTimers[elId] = setInterval(() => {
     const el = document.getElementById(elId);
     if (!el) { clearInterval(elapsedTimers[elId]); delete elapsedTimers[elId]; return; }
-    el.textContent = fmtSec(Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000));
+    // タイムゾーンを考慮してelapsed計算
+  const startMs = new Date(startedAt.endsWith('Z') ? startedAt : startedAt + '+09:00').getTime();
+  el.textContent = fmtSec(Math.floor((Date.now() - startMs) / 1000));
   }, 1000);
 }
 
@@ -141,21 +143,28 @@ refreshActiveSessions();
 function renderActiveSectionInToday(sessions) {
   const block = document.getElementById('activeSectionBlock');
   const list  = document.getElementById('activeSectionList');
-  // 保留中のセッションを除外
-  const heldBlock = document.getElementById('heldSectionBlock');
-  const heldList  = document.getElementById('heldSectionList');
-  const heldIds   = new Set(
+  // 保留中・待機中のセッションを除外
+  const heldList = document.getElementById('heldSectionList');
+  const waitList = document.getElementById('waitingSectionList');
+  const heldIds  = new Set(
     Array.from(heldList ? heldList.querySelectorAll('[data-resume-sid]') : [])
       .map(el => parseInt(el.dataset.resumeSid))
   );
-  const activeSessions = sessions.filter(s => !heldIds.has(s.id));
-  if (!activeSessions.length) { block.style.display = 'none'; list.innerHTML = ''; return; }
-  block.style.display = 'block';
-  const filteredSessions = activeSessions;
-  sessions = filteredSessions;
+  const waitIds = new Set(
+    Array.from(waitList ? waitList.querySelectorAll('[data-resume-wait]') : [])
+      .map(el => parseInt(el.dataset.resumeWait))
+  );
+  sessions = sessions.filter(s => !heldIds.has(s.id) && !waitIds.has(s.id));
+  const dot = document.getElementById('activePulseDot');
+  if (!sessions.length) {
+    list.innerHTML = '';
+    if (dot) dot.style.animation = 'none';
+    return;
+  }
+  if (dot) dot.style.animation = '';
   list.innerHTML = sessions.map(s => `
     <div class="active-card" id="acard-${s.id}">
-      <div class="pulse-dot"></div>
+      <div class="pulse-dot" style="background:var(--ink3)"></div>
       <div class="active-info">
         <div class="active-name">${s.name}</div>
         <div>
@@ -165,6 +174,7 @@ function renderActiveSectionInToday(sessions) {
       </div>
       <button class="task-btn task-focus-btn" style="margin-right:4px" onclick="openFocusMode('${s.name}')" title="フォーカスモード">⊙</button>
       <button class="btn btn-hold" data-hold-sid="${s.id}" data-task-id="${s.task_id || ''}">⏸ 保留</button>
+      <button class="btn btn-waiting" data-wait-sid="${s.id}" data-task-id="${s.task_id || ''}" data-name="${s.name}">≈ 待機</button>
       <button class="btn btn-done-stop" data-done-sid="${s.id}" data-task-id="${s.task_id || ''}">✓ 完了</button>
     </div>
   `).join('');
@@ -202,6 +212,36 @@ function renderActiveSectionInToday(sessions) {
     });
   });
 
+  // 待機ボタン
+  list.querySelectorAll('[data-wait-sid]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const sid    = parseInt(btn.dataset.waitSid);
+      const taskId = btn.dataset.taskId ? parseInt(btn.dataset.taskId) : null;
+      const card   = btn.closest('.active-card');
+      const nameEl = card?.querySelector('.active-name');
+      const name   = nameEl ? nameEl.textContent.trim() : '';
+      clearInterval(elapsedTimers['aelapsed-' + sid]);
+      delete elapsedTimers['aelapsed-' + sid];
+      if (card) card.style.display = 'none';
+      const res = await api('POST', '/api/sessions/stop', { session_id: sid });
+      const elapsedSec = res.duration_sec || 0;
+      await api('POST', '/api/sessions/hold', {
+        session_id: sid, name, task_id: taskId,
+        duration_sec: elapsedSec, hold_type: 'waiting'
+      });
+      if (taskId) {
+        try {
+          const cols = await api('GET', '/api/kanban/columns');
+          const waiting = cols.find(c => ['待機中','待機','Waiting'].includes(c.name));
+          if (waiting) await api('POST', '/api/tasks/' + taskId + '/status', { status: waiting.name });
+        } catch(_) {}
+      }
+      showToast('「' + name + '」を待機中にしました');
+      await renderWaitingSessions();
+      if (document.getElementById('tab-kanban').classList.contains('active')) loadKanbanTab();
+    });
+  });
+
   // 完了ボタン
   list.querySelectorAll('[data-done-sid]').forEach(btn => {
     btn.addEventListener('click', async () => {
@@ -228,26 +268,101 @@ function renderActiveSectionInToday(sessions) {
   });
 }
 
+// ── 待機中セッションの表示 ───────────────────────────
+async function renderWaitingSessions() {
+  const block = document.getElementById('waitingSectionBlock');
+  const list  = document.getElementById('waitingSectionList');
+  if (!block || !list) return;
+  const sessions = await api('GET', '/api/sessions/held?hold_type=waiting').catch(() => []);
+  list.innerHTML = '';
+  const waitDot = document.getElementById('waitingPulseDot');
+  if (!sessions.length) {
+    list.innerHTML = '';
+    if (waitDot) waitDot.style.animation = 'none';
+    return;
+  }
+  if (waitDot) waitDot.style.animation = '';
+  sessions.forEach(s => {
+    const since = new Date(s.waiting_since);
+    const now   = new Date();
+    const days  = Math.floor((now - since) / (1000 * 60 * 60 * 24));
+    const daysText = days === 0 ? '今日' : (days + '日目');
+    const sinceText = since.toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' });
+    const div = document.createElement('div');
+    div.className = 'active-card waiting-card';
+    div.style.borderColor = '#5fb3ff';
+    div.innerHTML =
+      '<div class="pulse-dot" style="background:var(--ink3)"></div>' +
+      '<div class="active-info">' +
+        '<div class="active-name">' + s.name + '</div>' +
+        '<div style="font-size:12px;color:#5fb3ff">待機開始: ' + sinceText + ' ・ 経過: ' + daysText + '</div>' +
+      '</div>' +
+      '<button class="btn btn-primary" style="font-size:12px" data-resume-wait="' + s.session_id + '" data-resume-name="' + s.name + '" data-resume-task="' + (s.task_id || '') + '">▶ 再開</button>' +
+      '<button class="btn btn-done-stop" style="font-size:12px" data-wait-done="' + s.session_id + '" data-resume-task="' + (s.task_id || '') + '">✓ 完了</button>';
+    list.appendChild(div);
+
+    div.querySelector('[data-resume-wait]').addEventListener('click', async () => {
+      const rname  = div.querySelector('[data-resume-wait]').dataset.resumeName;
+      const taskId = div.querySelector('[data-resume-task]').dataset.resumeTask || null;
+      await api('DELETE', '/api/sessions/held/' + s.session_id);
+      div.remove();
+      // 待機中の点滅を止める
+      const waitDot2 = document.getElementById('waitingPulseDot');
+      if (waitDot2) waitDot2.style.animation = 'none';
+      await api('POST', '/api/sessions/' + s.session_id + '/resume');
+      if (taskId) {
+        try {
+          const cols = await api('GET', '/api/kanban/columns');
+          const inP = cols.find(c => ['実行中','進行中'].includes(c.name));
+          if (inP) await api('POST', '/api/tasks/' + parseInt(taskId) + '/status', { status: inP.name });
+        } catch(_) {}
+      }
+      showToast('「' + rname + '」を再開しました');
+      await refreshActiveSessions();
+      if (document.getElementById('tab-kanban').classList.contains('active')) loadKanbanTab();
+    });
+
+    div.querySelector('[data-wait-done]').addEventListener('click', async () => {
+      const taskId = div.querySelector('[data-resume-task]').dataset.resumeTask || null;
+      await api('DELETE', '/api/sessions/held/' + s.session_id);
+      div.remove();
+      if (taskId) {
+        try {
+          const cols = await api('GET', '/api/kanban/columns');
+          const done = cols.find(c => ['完了','Done'].includes(c.name));
+          if (done) await api('POST', '/api/tasks/' + parseInt(taskId) + '/status', { status: done.name });
+          await api('POST', '/api/tasks/' + parseInt(taskId) + '/done');
+        } catch(_) {}
+      }
+      showToast('完了しました');
+      await renderWaitingSessions();
+      loadTodayTab();
+      if (document.getElementById('tab-kanban').classList.contains('active')) loadKanbanTab();
+    });
+  });
+}
+
 // ── 保留中セッションの表示 ───────────────────────────
 async function renderHeldSessions() {
   const block = document.getElementById('heldSectionBlock');
   const list  = document.getElementById('heldSectionList');
   if (!block || !list) return;
   // APIから保留中セッションを取得
-  const held = await api('GET', '/api/sessions/held').catch(() => []);
+  const held = await api('GET', '/api/sessions/held?hold_type=hold').catch(() => []);
   list.innerHTML = '';
+  const heldDot = document.getElementById('heldPulseDot');
   if (!held.length) {
-    block.style.display = 'none';
+    if (heldDot) heldDot.style.animation = 'none';
     return;
   }
-  block.style.display = 'block';
+  if (heldDot) heldDot.style.animation = '';
   held.forEach(s => {
     const div = document.createElement('div');
     div.className = 'active-card held-card';
     div.id = `hcard-${s.session_id}`;
     div.style.borderColor = '#ffaa00';
     div.innerHTML = `
-      <div class="pulse-dot" style="background:#ffaa00;animation:none"></div>
+      <div class="pulse-dot" style="background:var(--ink3)"></div>
       <div class="active-info">
         <div class="active-name">${s.name}</div>
         <div><span style="color:#ffaa00;font-size:12px">⏸ 保留中 ${fmtSec(s.duration_sec || 0)}</span></div>
@@ -265,15 +380,15 @@ async function renderHeldSessions() {
       const elapsedSec = parseInt(resumeBtn.dataset.resumeElapsed || '0');
       await api('DELETE', `/api/sessions/held/${s.session_id}`);
       div.remove();
-      // 新しいセッションを開始（保留前の経過時間を引き継ぐため開始時刻を調整）
-      const fakeStart = new Date(Date.now() - elapsedSec * 1000).toISOString();
-      const newRes = await api('POST', '/api/sessions/start', {
-        name, task_id: taskId ? parseInt(taskId) : null
-      });
-      // started_atを調整して経過時間を引き継ぐ
-      if (newRes && newRes.session_id) {
-        await api('PUT', `/api/sessions/${newRes.session_id}`, { started_at: fakeStart }).catch(() => {});
-      }
+      // 既存セッションを再開（新規作成しない）
+      // JSTでfakeStartを生成（UTCを避ける）
+      const _fakeMs = Date.now() - elapsedSec * 1000;
+      const _fakeD  = new Date(_fakeMs);
+      const pad = n => String(n).padStart(2,'0');
+      const fakeStart = `${_fakeD.getFullYear()}-${pad(_fakeD.getMonth()+1)}-${pad(_fakeD.getDate())}T${pad(_fakeD.getHours())}:${pad(_fakeD.getMinutes())}:${pad(_fakeD.getSeconds())}.${String(_fakeD.getMilliseconds()).padStart(3,'0')}`;
+      await api('POST', `/api/sessions/${s.session_id}/resume`);
+      await api('PUT', `/api/sessions/${s.session_id}`, { started_at: fakeStart }).catch(() => {});
+      startElapsedTimer(s.session_id, fakeStart, `aelapsed-${s.session_id}`);
       if (taskId) {
         try {
           const cols = await api('GET', '/api/kanban/columns');
@@ -384,6 +499,7 @@ async function loadTodayTab() {
     });
   } catch (e) { showToast('今日のデータ取得に失敗: ' + e.message); }
   await renderHeldSessions();
+  await renderWaitingSessions();
 }
 loadTodayTab();
 
@@ -701,6 +817,7 @@ function buildProjectCard(project, tasks, isOpen = false) {
       showToast(`「${name}」を開始しました`);
       refreshActiveSessions();
       loadTodayTab();
+      loadTasksTab();
       if (document.getElementById('tab-kanban').classList.contains('active')) loadKanbanTab();
     }
     if (action === 'add-sub') {
@@ -741,7 +858,14 @@ function buildTaskHTML(task) {
     <div class="subtask-item">
       <div class="task-check ${s.done ? 'done' : ''}" data-action="toggle" data-tid="${s.id}"></div>
       <span class="task-name ${s.done ? 'done' : ''}">${s.name}</span>
-      ${s.estimated_min ? `<span class="session-cat">${s.estimated_min}分</span>` : ''}
+      <div class="task-btns" style="margin-left:auto;display:flex;gap:2px;align-items:center">
+        ${s.estimated_min ? `<span class="session-cat">${s.estimated_min}分</span>` : ''}
+        <button class="task-btn task-focus-btn" data-action="focus-task" data-tid="${s.id}" data-name="${s.name}" title="フォーカス">⊙</button>
+        <button class="task-btn" data-action="start-task" data-tid="${s.id}" data-name="${s.name}">▶</button>
+        <button class="task-btn" data-action="detail-task" data-tid="${s.id}">…</button>
+        <button class="task-btn" data-action="del-task" data-tid="${s.id}">✕</button>
+        ${s.assignee ? `<span class="task-assignee">𓀠 ${s.assignee}</span>` : ''}
+      </div>
     </div>
   `).join('');
   const statusLabels = { todo:'未着手', in_progress:'実行中', on_hold:'保留中', done:'完了' };

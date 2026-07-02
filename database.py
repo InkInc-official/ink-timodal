@@ -553,6 +553,54 @@ def get_task_suggestions() -> list:
     return [r['name'] for r in rows]
 
 
+# ── 保留・待機セッション ─────────────────────────────
+def get_held_sessions(hold_type=None):
+    con = get_con()
+    cur = con.cursor()
+    if hold_type:
+        cur.execute('SELECT * FROM held_sessions WHERE hold_type=? ORDER BY created_at DESC', (hold_type,))
+    else:
+        cur.execute('SELECT * FROM held_sessions ORDER BY created_at DESC')
+    rows = [dict(r) for r in cur.fetchall()]
+    con.close()
+    return rows
+
+def add_held_session(session_id, name, task_id, duration_sec, hold_type='hold'):
+    con = get_con()
+    cur = con.cursor()
+    now = datetime.datetime.now().isoformat()
+    cur.execute('''
+        INSERT INTO held_sessions (session_id, name, task_id, duration_sec, hold_type, waiting_since, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    ''', (session_id, name, task_id, duration_sec, hold_type, now, now))
+    con.commit()
+    con.close()
+
+def remove_held_session(session_id):
+    con = get_con()
+    cur = con.cursor()
+    cur.execute('DELETE FROM held_sessions WHERE session_id=?', (session_id,))
+    con.commit()
+    con.close()
+
+def init_held_sessions_table():
+    con = get_con()
+    cur = con.cursor()
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS held_sessions (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id   INTEGER,
+            name         TEXT,
+            task_id      INTEGER,
+            duration_sec INTEGER DEFAULT 0,
+            hold_type    TEXT DEFAULT 'hold',
+            waiting_since TEXT,
+            created_at   TEXT
+        )
+    ''')
+    con.commit()
+    con.close()
+
 # ── アーカイブ処理 ──────────────────────────────────
 def run_auto_archive():
     """月またぎの完了タスクを自動アーカイブ"""

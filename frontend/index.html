@@ -181,21 +181,30 @@
       </div>
 
       <!-- 計測中（今日タブ内） -->
-      <div class="section-block" id="activeSectionBlock" style="display:none">
+      <div class="section-block" id="activeSectionBlock">
         <div class="section-title">
-          <span class="pulse-dot" style="background:var(--ink2)"></span>
+          <span class="pulse-dot" id="activePulseDot" style="background:var(--ink2);animation:none"></span>
           計測中
         </div>
         <div id="activeSectionList" class="active-sessions"></div>
       </div>
 
       <!-- 保留中 -->
-      <div class="section-block" id="heldSectionBlock" style="display:none">
+      <div class="section-block" id="heldSectionBlock">
         <div class="section-title">
-          <span class="pulse-dot" style="background:#ffaa00;animation:none"></span>
+          <span class="pulse-dot" id="heldPulseDot" style="background:#ffaa00;animation:none"></span>
           保留中
         </div>
         <div id="heldSectionList" class="session-list"></div>
+      </div>
+
+      <!-- 待機中 -->
+      <div class="section-block" id="waitingSectionBlock">
+        <div class="section-title">
+          <span class="pulse-dot" id="waitingPulseDot" style="background:#5fb3ff;animation:none"></span>
+          待機中
+        </div>
+        <div id="waitingSectionList"></div>
       </div>
 
       <!-- 本日の記録 -->
