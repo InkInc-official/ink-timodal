@@ -84,6 +84,7 @@ class TaskUpdate(BaseModel):
     importance:    Optional[str] = None
     urgency:       Optional[str] = None
     done:          Optional[int] = None
+    archived:      Optional[int] = None
 
 class SessionStart(BaseModel):
     name:          str
@@ -152,7 +153,6 @@ def _load_active_sessions():
         active_sessions[s['id']] = s
 
 _load_active_sessions()
-db.init_held_sessions_table()
 
 def _schedule_reminder(session_id: int, minutes: int = 60):
     def fire():
@@ -419,8 +419,7 @@ def list_sessions(
 @app.get("/api/sessions/active")
 def list_active():
     sessions = db.get_active_sessions()
-    held = db.get_held_sessions()
-    held_ids = set(s['session_id'] for s in held)
+    held_ids = set(_held_sessions.keys())
     return [s for s in sessions if s['id'] not in held_ids]
 
 @app.get("/api/sessions/suggestions")
@@ -526,55 +525,30 @@ def weekly_report():
 # 保留中セッション API
 # ═══════════════════════════════════════════════════
 
+_held_sessions = {}  # { session_id: { name, task_id, duration_sec } }
+
 @app.post("/api/sessions/hold")
 def hold_session(body: dict):
     session_id   = body.get('session_id')
     name         = body.get('name', '')
     task_id      = body.get('task_id')
     duration_sec = body.get('duration_sec', 0)
-    hold_type    = body.get('hold_type', 'hold')
-    db.add_held_session(session_id, name, task_id, duration_sec, hold_type)
+    _held_sessions[session_id] = {
+        'session_id':  session_id,
+        'name':        name,
+        'task_id':     task_id,
+        'duration_sec': duration_sec,
+    }
     return {"message": "保留しました"}
 
 @app.get("/api/sessions/held")
-def get_held_sessions_api(hold_type: str = None):
-    return db.get_held_sessions(hold_type)
+def get_held_sessions():
+    return list(_held_sessions.values())
 
 @app.delete("/api/sessions/held/{session_id}")
 def remove_held_session(session_id: int):
-    db.remove_held_session(session_id)
+    _held_sessions.pop(session_id, None)
     return {"message": "削除しました"}
-
-@app.post("/api/sessions/{session_id}/resume")
-def resume_session(session_id: int):
-    """保留・待機中のセッションを再開（ended_atをNULLに戻す）"""
-    import datetime as _dt
-    # ended_atをNULLに戻して再開
-    db.db_update('sessions', {'ended_at': None, 'duration_sec': None}, {'id': session_id})
-    # active_sessionsに追加
-    con = db.get_con()
-    cur = con.cursor()
-    cur.execute('SELECT * FROM sessions WHERE id=?', (session_id,))
-    row = cur.fetchone()
-    con.close()
-    if row:
-        active_sessions[session_id] = {
-            'id':         session_id,
-            'name':       row['name'],
-            'category':   row['category'],
-            'started_at': row['started_at'],
-            'task_id':    row['task_id'],
-        }
-    return {"message": "再開しました", "session_id": session_id}
-
-@app.post("/api/sessions/waiting")
-def waiting_session(body: dict):
-    session_id   = body.get('session_id')
-    name         = body.get('name', '')
-    task_id      = body.get('task_id')
-    duration_sec = body.get('duration_sec', 0)
-    db.add_held_session(session_id, name, task_id, duration_sec, 'waiting')
-    return {"message": "待機中にしました"}
 
 # ═══════════════════════════════════════════════════
 # アーカイブ・検索 API
