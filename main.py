@@ -84,7 +84,6 @@ class TaskUpdate(BaseModel):
     importance:    Optional[str] = None
     urgency:       Optional[str] = None
     done:          Optional[int] = None
-    archived:      Optional[int] = None
 
 class SessionStart(BaseModel):
     name:          str
