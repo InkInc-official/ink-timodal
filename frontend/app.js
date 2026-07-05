@@ -476,7 +476,8 @@ async function loadTodayTab() {
             data-category="${s.category}"
             data-started-at="${s.started_at}"
             data-ended-at="${s.ended_at}"
-            data-note="${s.note || ''}">編集</button>
+            data-note="${s.note || ''}"
+            data-project-id="${s.project_id || ''}">編集</button>
           <button class="task-btn session-del-btn" data-sid="${s.id}" data-name="${s.name}">削除</button>
         </div>
       </div>

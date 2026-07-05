@@ -470,7 +470,13 @@ def stop_session(session_id: int) -> int:
 def get_active_sessions() -> list:
     con = get_con()
     cur = con.cursor()
-    cur.execute('SELECT * FROM sessions WHERE ended_at IS NULL ORDER BY started_at ASC')
+    cur.execute('''
+        SELECT s.*, t.project_id, t.category as task_category
+        FROM sessions s
+        LEFT JOIN tasks t ON s.task_id = t.id
+        WHERE s.ended_at IS NULL
+        ORDER BY s.started_at ASC
+    ''')
     rows = [dict(r) for r in cur.fetchall()]
     con.close()
     return rows

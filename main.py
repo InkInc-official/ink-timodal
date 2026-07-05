@@ -432,11 +432,15 @@ def start_session(body: SessionStart):
         task_id=body.task_id,
         estimated_sec=body.estimated_sec,
     )
+    # タスク情報を取得してセッションに引き継ぐ
+    task_info = db.get_task(body.task_id) if body.task_id else None
     active_sessions[session_id] = {
         'id':         session_id,
         'name':       body.name,
         'category':   category,
         'started_at': started_at,
+        'task_id':    body.task_id,
+        'project_id': task_info.get('project_id') if task_info else None,
     }
     _schedule_reminder(session_id)
     return {
