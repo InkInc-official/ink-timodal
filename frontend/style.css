@@ -1171,3 +1171,15 @@ textarea   { resize: vertical; }
 }
 .archive-item-meta { display: flex; gap: 8px; font-size: 12px; margin-top: 4px; }
 .archive-item-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+.btn-waiting {
+  background: rgba(95,179,255,.15);
+  color: #5fb3ff;
+  border: 1px solid rgba(95,179,255,.3);
+  padding: 6px 12px;
+  border-radius: var(--radius);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-waiting:hover { background: rgba(95,179,255,.25); }

@@ -612,8 +612,9 @@ document.getElementById('sessionEditSaveBtn').addEventListener('click', async ()
   const projectId = document.getElementById('editSessionProject').value || null;
   const body = { name, category, note };
   if (projectId)  body.task_id    = null; // セッションのproject紐付けはtask経由
-  if (startVal)   body.started_at = new Date(startVal).toISOString();
-  if (endVal)     body.ended_at   = new Date(endVal).toISOString();
+  // ローカル時刻をそのまま使う（UTCに変換しない）
+  if (startVal)   body.started_at = startVal.replace('T', 'T').slice(0, 19);
+  if (endVal)     body.ended_at   = endVal.replace('T', 'T').slice(0, 19);
   await api('PUT', `/api/sessions/${sid}`, body);
   document.getElementById('sessionEditModal').style.display = 'none';
   showToast('更新しました');

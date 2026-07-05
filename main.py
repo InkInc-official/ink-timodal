@@ -450,6 +450,24 @@ def start_session(body: SessionStart):
         "started_at": started_at,
     }
 
+@app.post("/api/sessions/{session_id}/resume")
+def resume_session(session_id: int):
+    db.db_update('sessions', {'ended_at': None, 'duration_sec': None}, {'id': session_id})
+    con = db.get_con()
+    cur = con.cursor()
+    cur.execute('SELECT * FROM sessions WHERE id=?', (session_id,))
+    row = cur.fetchone()
+    con.close()
+    if row:
+        active_sessions[session_id] = {
+            'id':         session_id,
+            'name':       row['name'],
+            'category':   row['category'],
+            'started_at': row['started_at'],
+            'task_id':    row['task_id'],
+        }
+    return {"message": "再開しました", "session_id": session_id}
+
 @app.post("/api/sessions/stop")
 def stop_session(body: SessionStop):
     duration_sec = db.stop_session(body.session_id)
