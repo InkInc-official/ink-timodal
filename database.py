@@ -764,3 +764,30 @@ def get_weekly_summary() -> dict:
         'by_category': by_cat,
         'by_day':      by_day,
     }
+
+def get_held_sessions(hold_type=None):
+    con = get_con()
+    cur = con.cursor()
+    if hold_type:
+        cur.execute("SELECT * FROM held_sessions WHERE hold_type=? ORDER BY created_at DESC", (hold_type,))
+    else:
+        cur.execute("SELECT * FROM held_sessions ORDER BY created_at DESC")
+    rows = [dict(r) for r in cur.fetchall()]
+    con.close()
+    return rows
+
+def add_held_session(session_id, name, task_id, duration_sec, hold_type="hold"):
+    con = get_con()
+    cur = con.cursor()
+    import datetime as _dt
+    now = _dt.datetime.now().isoformat()
+    cur.execute("INSERT INTO held_sessions (session_id, name, task_id, duration_sec, hold_type, waiting_since, created_at) VALUES (?,?,?,?,?,?,?)", (session_id, name, task_id, duration_sec, hold_type, now, now))
+    con.commit()
+    con.close()
+
+def remove_held_session(session_id):
+    con = get_con()
+    cur = con.cursor()
+    cur.execute("DELETE FROM held_sessions WHERE session_id=?", (session_id,))
+    con.commit()
+    con.close()

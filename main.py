@@ -84,6 +84,7 @@ class TaskUpdate(BaseModel):
     importance:    Optional[str] = None
     urgency:       Optional[str] = None
     done:          Optional[int] = None
+    archived:      Optional[int] = None
 
 class SessionStart(BaseModel):
     name:          str
@@ -418,7 +419,8 @@ def list_sessions(
 @app.get("/api/sessions/active")
 def list_active():
     sessions = db.get_active_sessions()
-    held_ids = set(_held_sessions.keys())
+    held = db.get_held_sessions()
+    held_ids = set(s['session_id'] for s in held)
     return [s for s in sessions if s['id'] not in held_ids]
 
 @app.get("/api/sessions/suggestions")
@@ -546,29 +548,24 @@ def weekly_report():
 # 保留中セッション API
 # ═══════════════════════════════════════════════════
 
-_held_sessions = {}  # { session_id: { name, task_id, duration_sec } }
-
 @app.post("/api/sessions/hold")
 def hold_session(body: dict):
     session_id   = body.get('session_id')
     name         = body.get('name', '')
     task_id      = body.get('task_id')
     duration_sec = body.get('duration_sec', 0)
-    _held_sessions[session_id] = {
-        'session_id':  session_id,
-        'name':        name,
-        'task_id':     task_id,
-        'duration_sec': duration_sec,
-    }
+    hold_type    = body.get('hold_type', 'hold')
+    db.add_held_session(session_id, name, task_id, duration_sec, hold_type)
     return {"message": "保留しました"}
 
 @app.get("/api/sessions/held")
-def get_held_sessions():
-    return list(_held_sessions.values())
+def get_held_sessions_api(hold_type: str = None):
+    return db.get_held_sessions(hold_type)
 
 @app.delete("/api/sessions/held/{session_id}")
 def remove_held_session(session_id: int):
-    _held_sessions.pop(session_id, None)
+    db.remove_held_session(session_id)
+    return {"message": "削除しました"}
     return {"message": "削除しました"}
 
 # ═══════════════════════════════════════════════════
