@@ -471,6 +471,7 @@ async function loadTodayTab() {
         <span class="session-time">${fmtTime(s.started_at)} - ${fmtTime(s.ended_at)}</span>
         <div class="session-actions">
           <button class="task-btn task-focus-btn session-focus-btn" data-name="${s.name}" title="フォーカスモード">⊙</button>
+          <button class="task-btn session-restart-btn" data-name="${s.name}" data-task-id="${s.task_id||''}">⟲ 再始動</button>
           <button class="task-btn session-edit-btn"
             data-sid="${s.id}" data-name="${s.name}"
             data-category="${s.category}"
@@ -485,6 +486,25 @@ async function loadTodayTab() {
 
     list.querySelectorAll('.session-focus-btn').forEach(btn => {
       btn.addEventListener('click', () => openFocusMode(btn.dataset.name));
+    });
+    list.querySelectorAll('.session-restart-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const name   = btn.dataset.name;
+        const taskId = btn.dataset.taskId || null;
+        await api('POST', '/api/sessions/start', {
+          name, task_id: taskId ? parseInt(taskId) : null
+        });
+        if (taskId) {
+          try {
+            const cols = await api('GET', '/api/kanban/columns');
+            const inP = cols.find(c => ['実行中','進行中'].includes(c.name));
+            if (inP) await api('POST', `/api/tasks/${parseInt(taskId)}/status`, { status: inP.name });
+          } catch(_) {}
+        }
+        showToast(`⟲ 「${name}」を再始動しました`);
+        await refreshActiveSessions();
+        loadTodayTab();
+      });
     });
     list.querySelectorAll('.session-edit-btn').forEach(btn => {
       btn.addEventListener('click', () => openSessionEditModal(btn.dataset));
@@ -556,13 +576,22 @@ async function renderPastRecords() {
         <span class="session-cat">${s.category||'その他'}</span>
         <span class="session-dur">${fmtSec(s.duration_sec||0)}</span>
         <span style="font-size:11px;color:var(--muted);font-family:DM Mono,monospace">${(s.started_at||'').slice(11,16)} - ${(s.ended_at||'').slice(11,16)}</span>
-        <button class="btn btn-primary" style="font-size:11px;padding:3px 8px" data-resume-name="${s.name}" data-resume-task="${s.task_id||''}">▶ 再開</button>
+        <button class="task-btn past-restart-btn" data-name="${s.name}" data-task-id="${s.task_id||''}">⟲ 再始動</button>
+        <button class="task-btn past-edit-btn"
+          data-sid="${s.id}" data-name="${s.name}"
+          data-category="${s.category||''}"
+          data-started-at="${s.started_at||''}"
+          data-ended-at="${s.ended_at||''}"
+          data-note="${s.note||''}"
+          data-project-id="${s.project_id||''}">編集</button>
+        <button class="task-btn past-del-btn" data-sid="${s.id}" data-name="${s.name}">削除</button>
       `;
       list.appendChild(div);
 
-      div.querySelector('[data-resume-name]').addEventListener('click', async () => {
-        const name   = div.querySelector('[data-resume-name]').dataset.resumeName;
-        const taskId = div.querySelector('[data-resume-task]').dataset.resumeTask || null;
+      // ⟲ 再始動
+      div.querySelector('.past-restart-btn').addEventListener('click', async () => {
+        const name   = div.querySelector('.past-restart-btn').dataset.name;
+        const taskId = div.querySelector('.past-restart-btn').dataset.taskId || null;
         await api('POST', '/api/sessions/start', {
           name, task_id: taskId ? parseInt(taskId) : null
         });
@@ -573,9 +602,23 @@ async function renderPastRecords() {
             if (inP) await api('POST', `/api/tasks/${parseInt(taskId)}/status`, { status: inP.name });
           } catch(_) {}
         }
-        showToast(`▶ 「${name}」を再開しました`);
+        showToast(`⟲ 「${name}」を再始動しました`);
         await refreshActiveSessions();
         loadTodayTab();
+      });
+      // 編集
+      div.querySelector('.past-edit-btn').addEventListener('click', () => {
+        openSessionEditModal(div.querySelector('.past-edit-btn').dataset);
+      });
+      // 削除
+      div.querySelector('.past-del-btn').addEventListener('click', async () => {
+        const sid  = div.querySelector('.past-del-btn').dataset.sid;
+        const name = div.querySelector('.past-del-btn').dataset.name;
+        const ok = await showConfirm('記録を削除', `「${name}」の記録を削除しますか？`);
+        if (!ok) return;
+        await api('DELETE', `/api/sessions/${sid}`);
+        div.remove();
+        showToast('削除しました');
       });
     });
   });
