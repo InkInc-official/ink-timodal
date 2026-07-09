@@ -501,6 +501,84 @@ async function loadTodayTab() {
   } catch (e) { showToast('今日のデータ取得に失敗: ' + e.message); }
   await renderHeldSessions();
   await renderWaitingSessions();
+  await renderPastRecords();
+}
+
+// ── 過去の記録（直近3日）────────────────────────────
+async function renderPastRecords() {
+  const block = document.getElementById('pastRecordBlock');
+  const list  = document.getElementById('pastRecordList');
+  if (!block || !list) return;
+
+  // 3日前から昨日までのセッションを取得
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const todayStr = today.toISOString().slice(0,10);
+  const threeDaysAgo = new Date(today);
+  threeDaysAgo.setDate(today.getDate() - 3);
+  const fromStr = threeDaysAgo.toISOString().slice(0,10);
+
+  const sessions = await api('GET', `/api/sessions?date_from=${fromStr}&date_to=${todayStr}&limit=50`).catch(() => []);
+
+  // 今日のセッションを除外
+  const past = sessions.filter(s => {
+    const d = (s.started_at || '').slice(0,10);
+    return d < todayStr;
+  });
+
+  list.innerHTML = '';
+  if (!past.length) {
+    block.style.display = 'none';
+    return;
+  }
+  block.style.display = 'block';
+
+  // 日付ごとにグループ化
+  const groups = {};
+  past.forEach(s => {
+    const d = (s.started_at || '').slice(0,10);
+    if (!groups[d]) groups[d] = [];
+    groups[d].push(s);
+  });
+
+  Object.keys(groups).sort().reverse().forEach(date => {
+    const dateLabel = document.createElement('div');
+    dateLabel.style.cssText = 'font-size:11px;color:var(--muted);padding:8px 0 4px;font-family:DM Mono,monospace;';
+    dateLabel.textContent = date;
+    list.appendChild(dateLabel);
+
+    groups[date].forEach(s => {
+      const div = document.createElement('div');
+      div.className = 'session-row';
+      div.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);';
+      div.innerHTML = `
+        <span style="flex:1;font-size:13px">${s.name}</span>
+        <span class="session-cat">${s.category||'その他'}</span>
+        <span class="session-dur">${fmtSec(s.duration_sec||0)}</span>
+        <span style="font-size:11px;color:var(--muted);font-family:DM Mono,monospace">${(s.started_at||'').slice(11,16)} - ${(s.ended_at||'').slice(11,16)}</span>
+        <button class="btn btn-primary" style="font-size:11px;padding:3px 8px" data-resume-name="${s.name}" data-resume-task="${s.task_id||''}">▶ 再開</button>
+      `;
+      list.appendChild(div);
+
+      div.querySelector('[data-resume-name]').addEventListener('click', async () => {
+        const name   = div.querySelector('[data-resume-name]').dataset.resumeName;
+        const taskId = div.querySelector('[data-resume-task]').dataset.resumeTask || null;
+        await api('POST', '/api/sessions/start', {
+          name, task_id: taskId ? parseInt(taskId) : null
+        });
+        if (taskId) {
+          try {
+            const cols = await api('GET', '/api/kanban/columns');
+            const inP = cols.find(c => ['実行中','進行中'].includes(c.name));
+            if (inP) await api('POST', `/api/tasks/${parseInt(taskId)}/status`, { status: inP.name });
+          } catch(_) {}
+        }
+        showToast(`▶ 「${name}」を再開しました`);
+        await refreshActiveSessions();
+        loadTodayTab();
+      });
+    });
+  });
 }
 loadTodayTab();
 
