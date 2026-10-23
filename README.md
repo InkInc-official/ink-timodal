@@ -182,3 +182,7 @@ AIによる創造と人によるケアを両立するライバー事務所です
 - Web: https://inkinc-hp.vercel.app/
 - X: https://x.com/InkInc_Info
 - GitHub: https://github.com/InkInc-official
+
+---
+
+Created by **Ink Inc.** / 黒井葉跡 (Kuroi Haato) — https://inkinc-hp.pages.dev/
